@@ -1235,7 +1235,7 @@ fn passport_valid(passport: &str) -> bool {
             match Regex::new(r"pid:(\S*)").unwrap().captures(&field) {
                 Some(x) => {
                     let value = x.get(1).unwrap().as_str();
-                    if !Regex::new(r"\d{9}").unwrap().is_match(value) {
+                    if !Regex::new(r"^\d{9}$").unwrap().is_match(value) {
                         //println!("{} not valid because of pid not matching", passport);
                         return false;
                     }
