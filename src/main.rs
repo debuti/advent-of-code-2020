@@ -1,3 +1,5 @@
+use regex::Regex;
+
 /*
 
 */
@@ -1106,7 +1108,153 @@ ecl:hzl hgt:169cm cid:340
 eyr:2023
 iyr:2017 byr:1994";
 
-let data: Vec<String> = data.split("\n\n").map(|s| s.to_string().replace("\n", " ")).collect();
-let reqfields = vec!("byr", "iyr", "eyr", "hgt", hcl", "ecl", "pid");
-println!("Number of valid passports: {}", data.iter().filter(|x| let res = true; for rf in reqfields {if !x.contains(rf) res=false} res ).count());
+    let data: Vec<String> = data
+        .split("\n\n")
+        .map(|s| s.to_string().replace("\n", " "))
+        .collect();
+    let reqfields = vec!["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"];
+
+    let valid: Vec<&String> = data
+        .iter()
+        .filter(|x| {
+            let mut res = true;
+            for rf in &reqfields {
+                if !x.contains(&[rf, ":"].join("")) {
+                    res = false;
+                }
+            }
+            res
+        })
+        .collect();
+    println!("Number of valid passports: {}", valid.len());
+
+    let mut count = 0;
+    for item in &valid {
+        if passport_valid(item) {
+            count += 1;
+        }
+    }
+    println!("Number of verified passports: {}", count);
+}
+
+fn passport_valid(passport: &str) -> bool {
+    let passport: Vec<String> = passport.split(" ").map(|s| s.to_string()).collect();
+    for field in passport {
+        if field.starts_with("byr:") {
+            match Regex::new(r"^byr:(\d{4})$").unwrap().captures(&field) {
+                Some(x) => {
+                    let value = x.get(1).unwrap().as_str().parse::<u32>().unwrap();
+                    if value < 1920 || value > 2002 {
+                        //println!("{} not valid because of byr {}", passport, value);
+                        return false;
+                    }
+                }
+                None => unreachable!(),
+            }
+        }
+
+        if field.starts_with("iyr:") {
+            match Regex::new(r"^iyr:(\d{4})$").unwrap().captures(&field) {
+                Some(x) => {
+                    let value = x.get(1).unwrap().as_str().parse::<u32>().unwrap();
+                    if value < 2010 || value > 2020 {
+                        //println!("{} not valid because of iyr {}", passport, value);
+                        return false;
+                    }
+                }
+                None => {
+                    println!("\"{}\"", field);
+                    unreachable!()
+                }
+            }
+        }
+
+        if field.starts_with("eyr:") {
+            match Regex::new(r"^eyr:(\d{4})$").unwrap().captures(&field) {
+                Some(x) => {
+                    let value = x.get(1).unwrap().as_str().parse::<u32>().unwrap();
+                    if value < 2020 || value > 2030 {
+                        //println!("{} not valid because of eyr {}", passport, value);
+                        return false;
+                    }
+                }
+                None => unreachable!(),
+            }
+        }
+
+        if field.starts_with("hgt:") {
+            match Regex::new(r"^hgt:(\d+)(\S*)$").unwrap().captures(&field) {
+                Some(x) => {
+                    let value = x.get(1).unwrap().as_str().parse::<u32>().unwrap();
+                    let units = x.get(2).unwrap().as_str();
+                    if units == "cm" && (value < 150 || value > 193) {
+                        //println!("{} not valid because of hgt cm {}", passport, value);
+                        return false;
+                    }
+                    if units == "in" && (value < 59 || value > 76) {
+                        //println!("{} not valid because of hgt in {}", passport, value);
+                        return false;
+                    }
+                    if units != "cm" && units != "in" {
+                        //println!("{} not valid because of hgt", passport);
+                        return false;
+                    }
+                }
+                None => unreachable!(),
+            }
+        }
+
+        if field.starts_with("hcl:") {
+            match Regex::new(r"^hcl:(\S*)").unwrap().captures(&field) {
+                Some(x) => {
+                    let value = x.get(1).unwrap().as_str();
+                    if !Regex::new(r"#[0-9abcdef]{6}").unwrap().is_match(value) {
+                        //println!("{} not valid because of hcl not matching", passport);
+                        return false;
+                    }
+                }
+                None => unreachable!(),
+            }
+        }
+
+        if field.starts_with("ecl:") {
+            match Regex::new(r"ecl:(\S*)").unwrap().captures(&field) {
+                Some(x) => {
+                    let value = x.get(1).unwrap().as_str();
+                    let validvalues = ["amb", "blu", "brn", "gry", "grn", "hzl", "oth"];
+                    if !validvalues.contains(&value) {
+                        //println!("{} not valid because of ecl not matching", passport);
+                        return false;
+                    }
+                }
+                None => unreachable!(),
+            }
+        }
+
+        if field.starts_with("pid:") {
+            match Regex::new(r"pid:(\S*)").unwrap().captures(&field) {
+                Some(x) => {
+                    let value = x.get(1).unwrap().as_str();
+                    if !Regex::new(r"\d{9}").unwrap().is_match(value) {
+                        //println!("{} not valid because of pid not matching", passport);
+                        return false;
+                    }
+                }
+                None => unreachable!(),
+            }
+        }
+
+        if !field.starts_with("byr:")
+            && !field.starts_with("iyr:")
+            && !field.starts_with("eyr:")
+            && !field.starts_with("hgt:")
+            && !field.starts_with("hcl:")
+            && !field.starts_with("ecl:")
+            && !field.starts_with("pid:")
+            && !field.starts_with("cid:")
+        {
+            return false;
+        }
+    }
+    true
 }
