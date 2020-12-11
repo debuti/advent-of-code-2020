@@ -1,807 +1,1173 @@
-use regex::Regex;
-
 /*
---- Day 8: Handheld Halting ---
+--- Day 9: Encoding Error ---
 
-Your flight to the major airline hub reaches cruising altitude without incident. While you consider checking the in-flight menu for one of those drinks that come with a little umbrella, you are interrupted by the kid sitting next to you.
+With your neighbor happily enjoying their video game, you turn your attention to an open data port on the little screen in the seat in front of you.
 
-Their handheld game console won't turn on! They ask if you can take a look.
+Though the port is non-standard, you manage to connect it to your computer through the clever use of several paperclips. Upon connection, the port outputs a series of numbers (your puzzle input).
 
-You narrow the problem down to a strange infinite loop in the boot code (your puzzle input) of the device. You should be able to fix it, but first you need to be able to run the code in isolation.
+The data appears to be encrypted with the eXchange-Masking Addition System (XMAS) which, conveniently for you, is an old cypher with an important weakness.
 
-The boot code is represented as a text file with one instruction per line of text. Each instruction consists of an operation (acc, jmp, or nop) and an argument (a signed number like +4 or -20).
+XMAS starts by transmitting a preamble of 25 numbers. After that, each number you receive should be the sum of any two of the 25 immediately previous numbers. The two numbers will have different values, and there might be more than one such pair.
 
-    acc increases or decreases a single global value called the accumulator by the value given in the argument. For example, acc +7 would increase the accumulator by 7. The accumulator starts at 0. After an acc instruction, the instruction immediately below it is executed next.
-    jmp jumps to a new instruction relative to itself. The next instruction to execute is found using the argument as an offset from the jmp instruction; for example, jmp +2 would skip the next instruction, jmp +1 would continue to the instruction immediately below it, and jmp -20 would cause the instruction 20 lines above to be executed next.
-    nop stands for No OPeration - it does nothing. The instruction immediately below it is executed next.
+For example, suppose your preamble consists of the numbers 1 through 25 in a random order. To be valid, the next number must be the sum of two of those numbers:
 
-For example, consider the following program:
+    26 would be a valid next number, as it could be 1 plus 25 (or many other pairs, like 2 and 24).
+    49 would be a valid next number, as it is the sum of 24 and 25.
+    100 would not be valid; no two of the previous 25 numbers sum to 100.
+    50 would also not be valid; although 25 appears in the previous 25 numbers, the two numbers in the pair must be different.
 
-nop +0
-acc +1
-jmp +4
-acc +3
-jmp -3
-acc -99
-acc +1
-jmp -4
-acc +6
+Suppose the 26th number is 45, and the first number (no longer an option, as it is more than 25 numbers ago) was 20. Now, for the next number to be valid, there needs to be some pair of numbers among 1-19, 21-25, or 45 that add up to it:
 
-These instructions are visited in this order:
+    26 would still be a valid next number, as 1 and 25 are still within the previous 25 numbers.
+    65 would not be valid, as no two of the available numbers sum to it.
+    64 and 66 would both be valid, as they are the result of 19+45 and 21+45 respectively.
 
-nop +0  | 1
-acc +1  | 2, 8(!)
-jmp +4  | 3
-acc +3  | 6
-jmp -3  | 7
-acc -99 |
-acc +1  | 4
-jmp -4  | 5
-acc +6  |
+Here is a larger example which only considers the previous 5 numbers (and has a preamble of length 5):
 
-First, the nop +0 does nothing. Then, the accumulator is increased from 0 to 1 (acc +1) and jmp +4 sets the next instruction to the other acc +1 near the bottom. After it increases the accumulator from 1 to 2, jmp -4 executes, setting the next instruction to the only acc +3. It sets the accumulator to 5, and jmp -3 causes the program to continue back at the first acc +1.
+35
+20
+15
+25
+47
+40
+62
+55
+65
+95
+102
+117
+150
+182
+127
+219
+299
+277
+309
+576
 
-This is an infinite loop: with this sequence of jumps, the program will run forever. The moment the program tries to run any instruction a second time, you know it will never terminate.
+In this example, after the 5-number preamble, almost every number is the sum of two of the previous 5 numbers; the only number that does not follow this rule is 127.
 
-Immediately before the program would run an instruction a second time, the value in the accumulator is 5.
+The first step of attacking the weakness in the XMAS data is to find the first number in the list (after the preamble) which is not the sum of two of the 25 numbers before it. What is the first number that does not have this property?
 
-Run your copy of the boot code. Immediately before any instruction is executed a second time, what value is in the accumulator?
-
-Your puzzle answer was 1930.
+Your puzzle answer was 1504371145.
 --- Part Two ---
 
-After some careful analysis, you believe that exactly one instruction is corrupted.
+The final step in breaking the XMAS encryption relies on the invalid number you just found: you must find a contiguous set of at least two numbers in your list which sum to the invalid number from step 1.
 
-Somewhere in the program, either a jmp is supposed to be a nop, or a nop is supposed to be a jmp. (No acc instructions were harmed in the corruption of this boot code.)
+Again consider the above example:
 
-The program is supposed to terminate by attempting to execute an instruction immediately after the last instruction in the file. By changing exactly one jmp or nop, you can repair the boot code and make it terminate correctly.
+35
+20
+15
+25
+47
+40
+62
+55
+65
+95
+102
+117
+150
+182
+127
+219
+299
+277
+309
+576
 
-For example, consider the same program from above:
+In this list, adding up all of the numbers from 15 through 40 produces the invalid number from step 1, 127. (Of course, the contiguous set of numbers in your actual list might be much longer.)
 
-nop +0
-acc +1
-jmp +4
-acc +3
-jmp -3
-acc -99
-acc +1
-jmp -4
-acc +6
+To find the encryption weakness, add together the smallest and largest number in this contiguous range; in this example, these are 15 and 47, producing 62.
 
-If you change the first instruction from nop +0 to jmp +0, it would create a single-instruction infinite loop, never leaving that instruction. If you change almost any of the jmp instructions, the program will still eventually find another jmp instruction and loop forever.
+What is the encryption weakness in your XMAS-encrypted list of numbers?
 
-However, if you change the second-to-last instruction (from jmp -4 to nop -4), the program terminates! The instructions are visited in this order:
-
-nop +0  | 1
-acc +1  | 2
-jmp +4  | 3
-acc +3  |
-jmp -3  |
-acc -99 |
-acc +1  | 4
-nop -4  | 5
-acc +6  | 6
-
-After the last instruction (acc +6), the program terminates by attempting to run the instruction below the last instruction in the file. With this change, after the program terminates, the accumulator contains the value 8 (acc +1, acc +1, acc +6).
-
-Fix the program so that it terminates normally by changing exactly one jmp (to nop) or nop (to jmp). What is the value of the accumulator after the program terminates?
-
-Your puzzle answer was 1688.
+Your puzzle answer was 183278487.
 */
 
 fn main() {
-    let data = "acc +22
-acc +0
-jmp +1
-acc +49
-jmp +203
-jmp +545
-acc +26
-jmp +326
-acc +34
-acc +23
-nop +93
-jmp +346
-nop +513
-acc -5
-jmp +413
-jmp +560
-acc -1
-jmp +344
-acc +44
-acc -14
-nop +570
-acc +12
-jmp +137
-jmp +411
-jmp +1
-jmp +128
-acc -4
-acc +28
-acc +42
-jmp +206
-jmp -7
-nop +386
-acc +9
-jmp +280
-jmp +63
-acc +39
-acc +13
-acc +30
-acc +19
-jmp +25
-jmp -9
-acc +43
-jmp +180
-acc -16
-acc -8
-acc +17
-acc +11
-jmp +550
-acc +29
-acc +40
-jmp -44
-jmp -10
-nop +425
-acc -12
-jmp +19
-acc +38
-acc +1
-jmp -9
-jmp +317
-acc +46
-acc -15
-acc +10
-acc -1
-jmp +382
-acc +3
-acc +7
-nop +126
-jmp +378
-acc +48
-jmp -21
-jmp +547
-acc +28
-jmp +266
-acc -15
-acc +11
-acc +11
-jmp +499
-acc +5
-acc +38
-acc +17
-acc -7
-jmp +444
-nop +357
-acc +14
-acc +8
-acc +1
-jmp +264
-nop +37
-acc +15
-acc +4
-jmp +372
-acc -1
-jmp +416
-acc +42
-acc +44
-nop +58
-jmp +494
-acc +24
-acc +8
-jmp +158
-acc +19
-nop +384
-jmp +43
-acc +0
-jmp +27
-jmp +479
-acc +37
-jmp +332
-acc -5
-acc +49
-jmp -87
-acc -2
-acc +41
-jmp +50
-acc -7
-acc +8
-acc -8
-acc +3
-jmp +68
-jmp +1
-acc -11
-nop +117
-jmp +403
-jmp +348
-jmp -33
-jmp +1
-acc +20
-jmp +300
-jmp +148
-jmp +1
-jmp +361
-acc +1
-acc +12
-acc +42
-jmp -111
-acc +36
-acc +1
-acc +18
-jmp -10
-jmp +20
-jmp +464
-nop -89
-nop +152
-jmp +2
-jmp +48
-acc +17
-acc +29
-nop +100
-nop -96
-jmp +27
-acc -3
-acc +18
-jmp +293
-jmp +222
-acc -19
-acc +35
-acc +46
-acc +3
-jmp +230
-nop -147
-acc +39
-jmp +46
-jmp +123
-acc +23
-acc -9
-acc +33
-acc +30
-jmp +444
-acc -8
-nop +188
-acc +24
-jmp -113
-jmp -156
-acc -10
-acc +30
-jmp +24
-acc +49
-acc +33
-nop -75
-acc -14
-jmp -52
-acc +33
-jmp -156
-jmp +401
-acc -9
-jmp +14
-acc +37
-acc +4
-jmp +37
-acc +29
-nop +57
-jmp +243
-acc +10
-nop +382
-acc +19
-acc +13
-jmp +216
-acc +17
-jmp +177
-nop +405
-nop +9
-acc +43
-jmp +30
-nop +387
-jmp -51
-jmp +97
-jmp +348
-jmp +397
-jmp +219
-nop +148
-acc +34
-jmp -12
-acc -16
-acc +5
-acc +33
-jmp +29
-acc +49
-jmp +126
-acc +19
-acc -11
-acc -11
-jmp +333
-acc +10
-jmp -14
-jmp +89
-acc +0
-acc +11
-jmp -196
-acc +33
-jmp +1
-acc +31
-jmp +353
-jmp +268
-nop +170
-jmp +218
-jmp +90
-acc -18
-jmp -45
-jmp -156
-jmp -227
-acc +5
-acc -13
-jmp -136
-jmp +1
-jmp -52
-acc +24
-jmp +104
-nop -3
-acc +16
-acc +0
-acc +50
-jmp -7
-acc +37
-acc +7
-acc -19
-acc -14
-jmp +171
-acc +12
-acc +42
-acc -15
-jmp +12
-acc +21
-acc +37
-jmp -56
-jmp +1
-acc -3
-jmp -147
-nop -84
-acc -14
-acc +19
-nop +221
-jmp -132
-acc +10
-jmp +27
-acc +0
-jmp +250
-acc +12
-acc -9
-acc +5
-nop +263
-jmp +30
-jmp +1
-acc +10
-acc -17
-jmp -27
-acc +5
-acc +40
-acc -12
-acc -7
-jmp +99
-acc +45
-acc +3
-acc +39
-jmp -229
-acc +50
-acc +17
-acc +31
-jmp -12
-nop -41
-jmp +89
-jmp -36
-jmp +49
-jmp +1
-nop +214
-acc +25
-acc +23
-jmp +211
-nop +180
-acc +45
-jmp +245
-acc -10
-jmp +225
-jmp -120
-acc -4
-acc +45
-jmp +214
-acc +6
-acc +50
-acc +26
-jmp -180
-nop +83
-jmp +91
-acc +37
-acc +42
-jmp -115
-jmp +146
-acc +31
-jmp -144
-acc -14
-jmp -238
-acc +43
-acc +31
-jmp -149
-acc -19
-jmp +157
-acc -8
-acc -16
-jmp +274
-acc +21
-acc -14
-jmp -135
-acc +40
-jmp -272
-acc +33
-acc -11
-jmp -51
-acc +35
-acc +31
-acc +14
-jmp -267
-acc +38
-acc -16
-acc +43
-jmp -25
-acc +37
-nop +40
-jmp +219
-acc +23
-nop -166
-jmp +126
-jmp -241
-acc +37
-acc +39
-nop -187
-acc +21
-jmp -179
-acc +32
-jmp +72
-acc +14
-acc +0
-acc +12
-acc +22
-jmp -15
-nop -30
-jmp -339
-acc +21
-jmp -160
-acc +14
-acc +17
-acc -18
-nop +210
-jmp +110
-acc +46
-jmp -325
-acc +27
-acc -13
-acc -4
-jmp -259
-acc -19
-acc -11
-acc +19
-acc +36
-jmp -357
-nop -60
-jmp +190
-acc +34
-acc -4
-nop +20
-jmp +1
-jmp -152
-acc +35
-acc -18
-jmp -77
-nop -264
-acc -2
-acc +4
-acc +4
-jmp -224
-nop -75
-acc +6
-acc -14
-jmp -270
-acc -14
-jmp -365
-acc +23
-acc -19
-jmp +61
-acc -1
-acc +7
-acc +0
-acc +11
-jmp +176
-acc +17
-acc -5
-acc +12
-acc +38
-jmp +45
-jmp +1
-acc +22
-acc -11
-acc +10
-jmp -396
-acc +36
-jmp -280
-acc +23
-nop +56
-acc -7
-jmp -421
-jmp -77
-acc +31
-nop -97
-acc +29
-jmp -401
-nop -324
-jmp -237
-acc +24
-acc +6
-acc -9
-jmp -337
-acc -7
-acc -3
-jmp -445
-acc +24
-acc +11
-acc +47
-acc +47
-jmp -359
-acc -6
-acc -6
-jmp +1
-jmp +1
-jmp -34
-acc -12
-acc +34
-acc +36
-acc +3
-jmp +11
-acc -18
-acc +26
-acc +43
-jmp -454
-acc +6
-acc +46
-acc +45
-acc +37
-jmp -23
-jmp -412
-acc +31
-acc +2
-acc -9
-acc +24
-jmp -469
-nop -114
-acc -19
-jmp -127
-jmp -313
-jmp -367
-acc +0
-jmp +34
-acc +22
-jmp -152
-acc +18
-acc +14
-acc +43
-jmp +56
-nop -61
-acc -14
-acc +22
-nop -71
-jmp -408
-nop -359
-acc -15
-acc +14
-acc +5
-jmp -266
-acc -10
-acc -14
-jmp -95
-acc +5
-acc -11
-acc +42
-jmp -485
-acc +0
-acc +32
-acc +14
-acc +16
-jmp +74
-nop +5
-jmp +1
-jmp -32
-acc +31
-jmp -34
-jmp -452
-acc +15
-jmp -7
-acc -12
-jmp +16
-nop -515
-jmp -404
-nop +33
-jmp -290
-acc -5
-acc +43
-acc +6
-acc +27
-jmp -462
-jmp +1
-acc +37
-acc +2
-acc +17
-jmp -220
-jmp +43
-acc +49
-acc -10
-acc -3
-jmp +17
-nop -523
-nop -456
-acc +8
-jmp -396
-jmp -182
-nop +11
-jmp +1
-jmp -434
-acc +36
-acc +50
-nop -486
-acc +31
-jmp -220
-acc +15
-acc -15
-jmp -44
-acc -17
-acc +5
-nop -332
-acc +46
-jmp -184
-acc -12
-acc +46
-jmp -219
-acc +27
-acc +31
-jmp -155
-acc +44
-jmp +30
-nop -5
-acc +11
-acc +0
-acc -11
-jmp -455
-acc +30
-acc -3
-acc -2
-jmp -444
-jmp +6
-acc +44
-acc +15
-acc +21
-acc -12
-jmp -417
-nop -229
-jmp -494
-acc -12
-acc +16
-acc +21
-acc +5
-jmp -34
-nop -353
-acc -19
-acc +15
-acc -16
-jmp -448
-acc +18
-jmp -427
-acc +43
-nop -589
-acc +26
-jmp -297
-acc +0
-acc +15
-jmp -249
-acc +16
-acc -7
-jmp -337
-nop -566
-acc +35
-jmp -471
-acc -8
-acc +18
-nop -549
-acc +15
-jmp +1";
-    let _test = "nop +0
-acc +1
-jmp +4
-acc +3
-jmp -3
-acc -99
-acc +1
-jmp -4
-acc +6";
-    let _data: Vec<_> = data.split("\n").collect();
-    let _test: Vec<_> = _test.split("\n").collect();
-    let code = parse_code(_data);
+    let data = "10
+17
+27
+3
+14
+30
+50
+23
+9
+43
+18
+47
+11
+19
+37
+41
+2
+21
+40
+36
+15
+8
+7
+13
+49
+5
+22
+48
+28
+10
+12
+14
+27
+16
+9
+24
+17
+18
+20
+11
+19
+23
+25
+21
+26
+29
+30
+31
+15
+32
+33
+34
+22
+36
+37
+28
+64
+35
+41
+27
+38
+63
+40
+56
+45
+47
+52
+42
+43
+57
+44
+46
+48
+49
+54
+50
+70
+58
+62
+55
+66
+82
+85
+120
+94
+78
+98
+83
+89
+164
+87
+97
+86
+110
+168
+96
+116
+99
+186
+264
+160
+141
+144
+253
+121
+149
+167
+181
+161
+170
+165
+169
+172
+197
+251
+185
+182
+333
+363
+257
+195
+215
+220
+354
+326
+332
+308
+303
+270
+548
+437
+328
+521
+330
+334
+337
+578
+357
+367
+377
+415
+397
+662
+435
+498
+410
+691
+787
+573
+693
+602
+600
+740
+598
+658
+664
+665
+667
+937
+671
+988
+724
+734
+744
+1137
+807
+845
+1333
+908
+1237
+1012
+1173
+1200
+1171
+1472
+1198
+1322
+2484
+1256
+1325
+1329
+1332
+1391
+2585
+1468
+1857
+1458
+1478
+2410
+1652
+2523
+1753
+2183
+1920
+2344
+2185
+2369
+2670
+2496
+2454
+3378
+2588
+2581
+2647
+2661
+2807
+2723
+2946
+2926
+4129
+3802
+2936
+3231
+3405
+3673
+5143
+3938
+5270
+5228
+5596
+5295
+8827
+5157
+4950
+5042
+5235
+5169
+5242
+7917
+5384
+10185
+5649
+5862
+6157
+8548
+8273
+6167
+6636
+7078
+7611
+9095
+10192
+9992
+10107
+10211
+10452
+10119
+10199
+10891
+10553
+10404
+14689
+11104
+11033
+11246
+11511
+14705
+14430
+15884
+13714
+12803
+16359
+14247
+16706
+17603
+20203
+20099
+20111
+20226
+23925
+36458
+20318
+20603
+35995
+20957
+21508
+34931
+60383
+23836
+44024
+25941
+40521
+26517
+30953
+27050
+33121
+41607
+40542
+34309
+37702
+40210
+80609
+40429
+60294
+77145
+40921
+47120
+42465
+67971
+63643
+45344
+71382
+71874
+49777
+60826
+52458
+53567
+57470
+64752
+60171
+67430
+94488
+72011
+74519
+77912
+80639
+82894
+81350
+154905
+83386
+120997
+95121
+87809
+128395
+102814
+110603
+109928
+106025
+173455
+114393
+111037
+113738
+159240
+127601
+132182
+223811
+146530
+149923
+176471
+158551
+208951
+164244
+178507
+248598
+308474
+220418
+182930
+190623
+208839
+212742
+215953
+217062
+277524
+224775
+241994
+291422
+274131
+368191
+259783
+432682
+337058
+341481
+354867
+322795
+387458
+389019
+342751
+596297
+415398
+391769
+373553
+395672
+582578
+421581
+441837
+433015
+547570
+567526
+466769
+762572
+533914
+596841
+774496
+602534
+659853
+884628
+976087
+764632
+665546
+716304
+1029312
+1011695
+765322
+769225
+813350
+1417924
+817253
+854596
+1213116
+2189203
+2067712
+1136448
+1034295
+1418542
+1130755
+1199460
+1199375
+1371759
+1262387
+1964782
+1381850
+2296682
+1430178
+1694858
+1481626
+1534547
+1578672
+1582575
+1968600
+1851548
+3346632
+1671849
+1888891
+2170743
+2330130
+2393142
+2233670
+2406054
+2954334
+2753609
+2734007
+2461762
+3043608
+2744013
+4265282
+4336184
+3991540
+3176484
+3016173
+3060298
+3113219
+3161247
+4626183
+3523397
+7325580
+3560740
+3842592
+4924352
+5064137
+4563800
+4867816
+4639724
+5769782
+5195769
+5505370
+5804311
+9203524
+6221545
+5760186
+6173517
+6076471
+6576913
+7677019
+6129392
+11889380
+6274466
+10100310
+7084137
+7403332
+10701139
+12872788
+9627937
+11417314
+9431616
+9507540
+9835493
+11574093
+12205863
+12082283
+11977828
+12798458
+11836657
+11889578
+23395142
+12249988
+14761156
+17777329
+12403858
+13213529
+13358603
+21035622
+14487469
+16515753
+21268273
+18939156
+26011987
+21485368
+19267109
+21005709
+27165014
+23410750
+23463671
+23726235
+31021439
+23814485
+27700998
+24086645
+34028265
+26737457
+24653846
+25617387
+35454909
+29874356
+26572132
+27846072
+31003222
+45508908
+35782862
+38206265
+50098632
+45572013
+48064596
+40272818
+44416459
+50298367
+46874421
+47189906
+47540720
+47901130
+81929395
+54583529
+48740491
+67010275
+57720428
+50271233
+52189519
+76843365
+54418204
+76670764
+58849294
+82972768
+82657283
+89013309
+78479083
+88337414
+84689277
+87147239
+87462724
+91290880
+95930397
+128860283
+95091036
+125859569
+96641621
+155490915
+181049802
+99011724
+102460752
+104689437
+129032884
+169804522
+113267498
+131088968
+135520058
+137328377
+170120007
+167492392
+175484653
+163168360
+200414737
+171836516
+190302604
+178753604
+186381916
+194942121
+191732657
+203701161
+195653345
+292819292
+234531782
+280174090
+274493959
+266361261
+217956935
+242300382
+437662319
+394003765
+266609026
+272848435
+300496737
+363145737
+358218432
+468303945
+335004876
+532970287
+350590120
+374406949
+370486261
+378114573
+390595466
+387386002
+399354506
+413610280
+650963008
+661879961
+515148817
+490805370
+694500502
+1132162821
+508909408
+539457461
+624827458
+567105763
+660234437
+635501613
+705491137
+867975163
+1260329071
+874462337
+721076381
+804205746
+744893210
+748600834
+765500575
+1057911133
+896295410
+812964786
+904415650
+999714778
+1005954187
+1862116879
+1030262831
+1076015171
+1048366869
+1106563224
+1164284919
+1373428292
+1356577994
+1295736050
+1340992750
+1661795985
+1465969591
+1904725168
+1469677215
+1486576956
+1493494044
+2938132050
+1754555021
+1669916225
+1709260196
+3241131977
+1812679564
+1504371145
+3026494219
+2036217018
+2078629700
+2877799437
+2270848143
+3195837152
+2402299274
+2460020969
+4661806743
+5008516716
+2636728800
+3153672314
+2935646806
+3548306915
+2956254171
+2963171259
+3833184721
+2997865189
+3174287370
+3213631341
+3540588163
+3317050709
+5319761677
+5034883871
+3583000845
+4971863824
+4956429137
+4480928974
+4673147417
+6367303655
+5358553445
+4862320243
+7659671932
+5572375606
+10043400587
+5592982971
+5954119360
+5891900977
+7818574414
+6538453352
+8036607613
+6172152559
+6211496530
+6387918711
+7797979683
+14165283338
+9818749380
+11040451072
+8554864669
+8063929819
+13252654903
+9154076391
+9343249217
+9535467660
+13752099043
+11846020337
+10434695849
+16633434043
+13370355289
+19197476978
+15710650357
+12383649089
+23700750998
+14942783380
+22805586602
+14208760172
+12560071270
+12599415241
+14185898394
+15861909502
+27937997437
+27326432469
+16618794488
+17218006210
+17407179036
+18497325608
+33269088538
+18878716877
+21919116749
+22280716186
+41535192641
+22818344938
+24943720359
+30588361499
+36415483188
+24983064330
+25159486511
+26745969664
+37543135600
+26768831442
+46816714314
+39925847710
+46205149346
+43861781207
+73585545756
+62206563896
+33836800698
+40778041794
+34625185246
+58334599937
+37376042485
+40797833626
+47977831449
+69023494284
+57334331163
+51751895772
+49926784689
+50103206870
+50142550841
+51729033994
+51905456175
+51928317953
+96831749142
+70630612649
+61394016688
+68461985944
+71212843183
+72001227731
+86354219240
+83940007568
+89281498660
+82603016695
+101855102642
+84767736087
+129547443120
+92526867620
+123118299358
+97904616138
+100245757711
+101655818683
+252665742478
+100029991559
+101832240864
+120773163490
+134508472870
+103833774128
+113322334641
+132024629337
+150675515348
+129856002632
+152401993512
+143214070914
+154604244426
+166543024263
+167370752782
+221018921201
+202077998575
+227035340490
+177294603707
+190431483758
+232054620896
+197934607697
+247830807511
+200275749270
+222605404354
+201862232423
+203863765687
+205666014992
+217156108769
+320287486390
+233689776760
+298567653600
+331898848133
+321147268689
+273070073546
+295616064426
+333645554672
+356974508021
+357802236540
+344665356489
+437720635888
+460725117250
+367726087465
+550331371481
+388366091455
+398210356967
+818527353790
+402137981693
+476933839233
+405725998110
+407528247415
+676564204622
+594183718026
+450845885529
+506759850306
+686933745055
+568686137972
+750391354599
+594217342235
+671280430513
+629261619098
+678310911161
+1089071726748
+763528234650
+712391443954
+1365244656216
+2052178401271
+756092178920
+805738604382
+786576448422
+1019532023501
+1399922322408
+807863979803
+1071117557259
+813254245525
+858374132944
+957605735835
+1188401060261
+1045063227764
+1441839145811
+1197947757070
+1162903480207
+1223478961333
+1265497772748
+2029026007398
+2588723617549
+1390702355115
+1468483622874
+1850801832146
+3048749589216
+1744182184257
+1877906156445
+1599830693947
+1592315052804
+2116180785023
+1621118225328
+2213176567933
+1666238112747
+1671628378469
+2281737868399
+1815979868779
+3294523780146
+2207966707971
+2243010984834
+2386382441540
+3056940467862
+2428401252955
+2488976734081
+2656200127863
+2859185977989
+3220948919275
+2983017407919
+3068314316821
+3192145746751
+4696943442052
+3800281760775
+3213433278132
+3258553165551
+3263943431273
+3437098094107
+3292746603797
+3337866491216
+3482217981526
+3953366246868
+4097717737178
+4864166835834
+5102196962823
+4450977692805
+4671412237789
+4814783694495
+5713140595725
+6879378945760
+5145176861944
+5842203385908
+6051331724740
+6175163154670
+6601809922489
+6260460063572
+6405579024883
+6471986443683
+6477376709405
+6506179881929
+6820084472742
+6556690035070
+6630613095013
+6774964585323
+7435584228394
+8769129974967
+10577307431559
+8548695429983
+9122389930594
+12472816480921
+9265761387300
+9486195932284
+9959960556439
+12118719620608
+10987380247852
+12732446507255
+11893535110648
+12226494879410
+15029590038539
+12737836772977
+13062869916999
+12877565468566
+13136792976942
+12983556591334
+24050250164851
+15105385465053
+13187303130083
+13405577680336
+14210548813717
+18034891362267
+24787856245276
+19699697362153
+17671085360577
+27273418730716
+19446156488723
+18751957319584
+20473576180136
+20947340804291
+27194105405051
+22880915358500
+24120029990058
+27907155507105
+26592880810419
+31222194492350
+27843222238030
+25861122059900
+26389134271670
+27397851943800
+26170859721417
+31440469042603
+28510963145389
+45942046869372
+27616126494053
+53568711665217
+37117241849300
+40552000719077
+38144661540713
+44060219632247
+66051817047818
+38198113808307
+39225533499720
+41420916984427
+43828256162791
+58416299897401
+47000945348558
+52250256331570
+52031981781317
+52454002870319
+52559993993087
+53258974003700
+77893103841217
+53786986215470
+65760788034766
+66841659993773
+56127089639442";
+    let _test = "35
+20
+15
+25
+47
+40
+62
+55
+65
+95
+102
+117
+150
+182
+127
+219
+299
+277
+309
+576";
+    let _data: Vec<_> = data
+        .split("\n")
+        .map(|s| s.parse::<u64>().unwrap())
+        .collect();
+    let _test: Vec<_> = _test
+        .split("\n")
+        .map(|s| s.parse::<u64>().unwrap())
+        .collect();
 
-    //println!("{:#?}", code);
+    //let invalid = process(&_test, 5);
+    let invalid = process(&_data, 25).unwrap();
+    println!("{} is breaking the XMAS", invalid);
 
-    let _ = run_code(&code);
-
-    fix_code(&code);
+    let weak = weakness(&_data, invalid).unwrap();
+    println!("XMAS weakness is {}", weak);
 }
 
-#[derive(Debug, Clone)]
-enum Opcode {
-    ACC(i32),
-    JMP(i32),
-    NOP(i32),
-}
-
-fn parse_code(listing: Vec<&str>) -> Vec<Opcode> {
-    let mut result: Vec<Opcode> = Vec::new();
-    for line in &listing {
-        match Regex::new(r"^(.*) (.*)$").unwrap().captures(line) {
-            Some(x) => {
-                let opcode = x.get(1).unwrap().as_str();
-                let value = x.get(2).unwrap().as_str().parse::<i32>().unwrap();
-
-                result.push(match opcode {
-                    "acc" => Opcode::ACC(value),
-                    "jmp" => Opcode::JMP(value),
-                    "nop" => Opcode::NOP(value),
-                    _ => unreachable!(),
-                })
-            }
-            None => {
-                println!("Parsing failed with {}", line);
-                unreachable!()
-            }
+fn process(data: &Vec<u64>, preamble: usize) -> Option<u64> {
+    for idx in preamble..data.len() {
+        let window = &data[idx - preamble..idx];
+        let windowcombinations = window
+            .iter()
+            .map(|x| {
+                window
+                    .iter()
+                    .map(|y| (x.clone(), y.clone()))
+                    .filter(|z| z.0 != z.1)
+                    .collect::<Vec<(u64, u64)>>()
+            })
+            .collect::<Vec<Vec<(u64, u64)>>>()
+            .into_iter()
+            .flatten()
+            .collect::<Vec<(u64, u64)>>();
+        let windowsums: Vec<u64> = windowcombinations.iter().map(|x| x.0 + x.1).collect();
+        //println!("{:#?}", windowcombinations);
+        if !windowsums.iter().any(|x| *x == data[idx]) {
+            return Some(data[idx]);
         }
     }
-    result
+    return None;
 }
 
-fn run_code(code: &Vec<Opcode>) -> Result<i32, ()> {
-    let mut accumulator: i32 = 0;
-    let mut pc: i32 = 0;
-    let mut traces: Vec<bool> = vec![false; code.len()];
-    loop {
-        if pc >= code.len() as i32 {
-            return Result::Ok(accumulator);
-        }
-        let fetch = &code[pc as usize];
-        if traces[pc as usize] == true {
-            println!("Infinite loop detected. ACC {} PC {}", accumulator, pc);
-            return Result::Err(());
-        } else {
-            traces[pc as usize] = true;
-        }
-        //println!("{:#?} {} {}", fetch, accumulator, pc);
-        match fetch {
-            Opcode::ACC(v) => {
-                accumulator += v;
-                pc += 1;
-            }
-            Opcode::JMP(v) => pc += v,
-            Opcode::NOP(_) => pc += 1,
+fn weakness(data: &Vec<u64>, invalid: u64) -> Option<u64> {
+    for winlen in 2..data.len() {
+        let sums: Vec<u64> = data.windows(winlen).map(|t| t.iter().sum()).collect();
+        if sums.iter().any(|x| *x == invalid) {
+            //println!("Found {} in {:#?}", invalid, sums);
+            let idx = sums.iter().position(|x| *x == invalid).unwrap();
+            // println!(
+            //     "Found {:#?} {} {} {}",
+            //     &data[idx..idx + winlen],
+            //     &data[idx..idx + winlen].iter().min().unwrap(),
+            //     &data[idx..idx + winlen].iter().max().unwrap(),
+            //     *&data[idx..idx + winlen].iter().min().unwrap()
+            //         + *&data[idx..idx + winlen].iter().max().unwrap(),
+            // );
+            return Some(
+                *&data[idx..idx + winlen].iter().min().unwrap()
+                    + *&data[idx..idx + winlen].iter().max().unwrap(),
+            );
         }
     }
-}
-
-fn fix_code(code: &Vec<Opcode>) -> i32 {
-    for idx in 0..code.len() {
-        let mut modified = code.clone();
-        modified[idx] = match modified[idx] {
-            Opcode::ACC(v) => Opcode::ACC(v),
-            Opcode::JMP(v) => Opcode::NOP(v),
-            Opcode::NOP(v) => Opcode::JMP(v),
-        };
-        if let Result::Ok(acc) = run_code(&modified) {
-            println!("Success by changing instruction {}! Acc: {}", idx, acc);
-            return acc;
-        }
-    }
-    return 0;
+    return None;
 }
