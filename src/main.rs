@@ -1,409 +1,78 @@
-/*
---- Day 11: Seating System ---
+#[derive(Debug, Clone)]
+struct Status(f64, f64, f64);
 
-Your plane lands with plenty of time to spare. The final leg of your journey is a ferry that goes directly to the tropical island where you can finally start your vacation. As you reach the waiting area to board the ferry, you realize you're so early, nobody else has even arrived yet!
-
-By modeling the process people use to choose (or abandon) their seat in the waiting area, you're pretty sure you can predict the best place to sit. You make a quick map of the seat layout (your puzzle input).
-
-The seat layout fits neatly on a grid. Each position is either floor (.), an empty seat (L), or an occupied seat (#). For example, the initial seat layout might look like this:
-
-L.LL.LL.LL
-LLLLLLL.LL
-L.L.L..L..
-LLLL.LL.LL
-L.LL.LL.LL
-L.LLLLL.LL
-..L.L.....
-LLLLLLLLLL
-L.LLLLLL.L
-L.LLLLL.LL
-
-Now, you just need to model the people who will be arriving shortly. Fortunately, people are entirely predictable and always follow a simple set of rules. All decisions are based on the number of occupied seats adjacent to a given seat (one of the eight positions immediately up, down, left, right, or diagonal from the seat). The following rules are applied to every seat simultaneously:
-
-    If a seat is empty (L) and there are no occupied seats adjacent to it, the seat becomes occupied.
-    If a seat is occupied (#) and four or more seats adjacent to it are also occupied, the seat becomes empty.
-    Otherwise, the seat's state does not change.
-
-Floor (.) never changes; seats don't move, and nobody sits on the floor.
-
-After one round of these rules, every seat in the example layout becomes occupied:
-
-#.##.##.##
-#######.##
-#.#.#..#..
-####.##.##
-#.##.##.##
-#.#####.##
-..#.#.....
-##########
-#.######.#
-#.#####.##
-
-After a second round, the seats with four or more occupied adjacent seats become empty again:
-
-#.LL.L#.##
-#LLLLLL.L#
-L.L.L..L..
-#LLL.LL.L#
-#.LL.LL.LL
-#.LLLL#.##
-..L.L.....
-#LLLLLLLL#
-#.LLLLLL.L
-#.#LLLL.##
-
-This process continues for three more rounds:
-
-#.##.L#.##
-#L###LL.L#
-L.#.#..#..
-#L##.##.L#
-#.##.LL.LL
-#.###L#.##
-..#.#.....
-#L######L#
-#.LL###L.L
-#.#L###.##
-
-#.#L.L#.##
-#LLL#LL.L#
-L.L.L..#..
-#LLL.##.L#
-#.LL.LL.LL
-#.LL#L#.##
-..L.L.....
-#L#LLLL#L#
-#.LLLLLL.L
-#.#L#L#.##
-
-#.#L.L#.##
-#LLL#LL.L#
-L.#.L..#..
-#L##.##.L#
-#.#L.LL.LL
-#.#L#L#.##
-..L.L.....
-#L#L##L#L#
-#.LLLLLL.L
-#.#L#L#.##
-
-At this point, something interesting happens: the chaos stabilizes and further applications of these rules cause no seats to change state! Once people stop moving around, you count 37 occupied seats.
-
-Simulate your seating area by applying the seating rules repeatedly until no seats change state. How many seats end up occupied?
-
-Your puzzle answer was 2406.
---- Part Two ---
-
-As soon as people start to arrive, you realize your mistake. People don't just care about adjacent seats - they care about the first seat they can see in each of those eight directions!
-
-Now, instead of considering just the eight immediately adjacent seats, consider the first seat in each of those eight directions. For example, the empty seat below would see eight occupied seats:
-
-.......#.
-...#.....
-.#.......
-.........
-..#L....#
-....#....
-.........
-#........
-...#.....
-
-The leftmost empty seat below would only see one empty seat, but cannot see any of the occupied ones:
-
-.............
-.L.L.#.#.#.#.
-.............
-
-The empty seat below would see no occupied seats:
-
-.##.##.
-#.#.#.#
-##...##
-...L...
-##...##
-#.#.#.#
-.##.##.
-
-Also, people seem to be more tolerant than you expected: it now takes five or more visible occupied seats for an occupied seat to become empty (rather than four or more from the previous rules). The other rules still apply: empty seats that see no occupied seats become occupied, seats matching no rule don't change, and floor never changes.
-
-Given the same starting layout as above, these new rules cause the seating area to shift around as follows:
-
-L.LL.LL.LL
-LLLLLLL.LL
-L.L.L..L..
-LLLL.LL.LL
-L.LL.LL.LL
-L.LLLLL.LL
-..L.L.....
-LLLLLLLLLL
-L.LLLLLL.L
-L.LLLLL.LL
-
-#.##.##.##
-#######.##
-#.#.#..#..
-####.##.##
-#.##.##.##
-#.#####.##
-..#.#.....
-##########
-#.######.#
-#.#####.##
-
-#.LL.LL.L#
-#LLLLLL.LL
-L.L.L..L..
-LLLL.LL.LL
-L.LL.LL.LL
-L.LLLLL.LL
-..L.L.....
-LLLLLLLLL#
-#.LLLLLL.L
-#.LLLLL.L#
-
-#.L#.##.L#
-#L#####.LL
-L.#.#..#..
-##L#.##.##
-#.##.#L.##
-#.#####.#L
-..#.#.....
-LLL####LL#
-#.L#####.L
-#.L####.L#
-
-#.L#.L#.L#
-#LLLLLL.LL
-L.L.L..#..
-##LL.LL.L#
-L.LL.LL.L#
-#.LLLLL.LL
-..L.L.....
-LLLLLLLLL#
-#.LLLLL#.L
-#.L#LL#.L#
-
-#.L#.L#.L#
-#LLLLLL.LL
-L.L.L..#..
-##L#.#L.L#
-L.L#.#L.L#
-#.L####.LL
-..#.#.....
-LLL###LLL#
-#.LLLLL#.L
-#.L#LL#.L#
-
-#.L#.L#.L#
-#LLLLLL.LL
-L.L.L..#..
-##L#.#L.L#
-L.L#.LL.L#
-#.LLLL#.LL
-..#.L.....
-LLL###LLL#
-#.LLLLL#.L
-#.L#LL#.L#
-
-Again, at this point, people stop shifting around and the seating area reaches equilibrium. Once this occurs, you count 26 occupied seats.
-
-Given the new visibility method and the rule change for occupied seats becoming empty, once equilibrium is reached, how many seats end up occupied?
-
-Your puzzle answer was 2149.
-*/
-
-#[derive(PartialEq, Clone)]
-enum LayoutPos {
-    Floor,
-    Empty,
-    Occupied,
-}
-
-fn main() {
-    let data = String::from_utf8_lossy(include_bytes!("data.txt"));
-    let data: Vec<_> = data.split("\n").filter(|x| x.len() > 0).collect();
-
-    //Layout is a vec of rows each being a vec holding columns
-    let mut originallayout: Vec<Vec<LayoutPos>> = Vec::new();
-    // Parsing
-    {
-        for line in data {
-            let mut temp: Vec<LayoutPos> = Vec::new();
-            for char in line.chars() {
-                match char {
-                    '.' => temp.push(LayoutPos::Floor),
-                    'L' => temp.push(LayoutPos::Empty),
-                    '#' => temp.push(LayoutPos::Occupied),
-                    _ => unreachable!(),
-                }
-            }
-            originallayout.push(temp);
-        }
-        //debuglayout(&layout);
-    }
-
-    // First question
-    {
-        let mut layout = originallayout.clone();
-        loop {
-            let (changes, newlayout) = process1(layout);
-            layout = newlayout;
-            if changes == 0 {
-                break;
-            }
-        }
-        debuglayout(&layout);
-        println!(
-            "The count of occupied seats is {}",
-            layout
-                .into_iter()
-                .flatten()
-                .filter(|x| *x == LayoutPos::Occupied)
-                .count()
-        );
-    }
-
-    // Second question
-    {
-        let mut layout = originallayout.clone();
-        loop {
-            let (changes, newlayout) = process2(layout);
-            layout = newlayout;
-            if changes == 0 {
-                break;
-            }
-        }
-        debuglayout(&layout);
-        println!(
-            "The count of occupied seats is now {}",
-            layout
-                .into_iter()
-                .flatten()
-                .filter(|x| *x == LayoutPos::Occupied)
-                .count()
-        );
-    }
-}
-
-fn process1(layout: Vec<Vec<LayoutPos>>) -> (u32, Vec<Vec<LayoutPos>>) {
-    let mut worklayout = layout.clone();
-    let mut changes = 0;
-    for ridx in 0..layout.len() {
-        for cidx in 0..layout[ridx].len() {
-            if layout[ridx][cidx] == LayoutPos::Empty && adjcount(&layout, ridx, cidx) == 0 {
-                worklayout[ridx][cidx] = LayoutPos::Occupied;
-                changes += 1;
-            }
-            if layout[ridx][cidx] == LayoutPos::Occupied && adjcount(&layout, ridx, cidx) >= 4 {
-                worklayout[ridx][cidx] = LayoutPos::Empty;
-                changes += 1;
-            }
-        }
-    }
-    (changes, worklayout)
-}
-
-fn process2(layout: Vec<Vec<LayoutPos>>) -> (u32, Vec<Vec<LayoutPos>>) {
-    let mut worklayout = layout.clone();
-    let mut changes = 0;
-    for ridx in 0..layout.len() {
-        for cidx in 0..layout[ridx].len() {
-            if layout[ridx][cidx] == LayoutPos::Empty && visiblecount(&layout, ridx, cidx) == 0 {
-                worklayout[ridx][cidx] = LayoutPos::Occupied;
-                changes += 1;
-            }
-            if layout[ridx][cidx] == LayoutPos::Occupied && visiblecount(&layout, ridx, cidx) >= 5 {
-                worklayout[ridx][cidx] = LayoutPos::Empty;
-                changes += 1;
-            }
-        }
-    }
-    (changes, worklayout)
-}
-
-const DIRECTIONS: [(i8, i8); 8] = [
-    (-1, 0),
-    (-1, 1),
-    (0, 1),
-    (1, 1),
-    (1, 0),
-    (1, -1),
-    (0, -1),
-    (-1, -1),
-];
-
-fn inlimits(layout: &Vec<Vec<LayoutPos>>, y: i8, x: i8) -> bool {
-    (y >= 0) && ((layout.len() - 1) as i8 >= y) && (x >= 0) && ((layout[0].len() - 1) as i8 >= x)
-}
-
-fn adjcount(layout: &Vec<Vec<LayoutPos>>, y: usize, x: usize) -> u32 {
-    let mut count = 0;
-
-    for direction in &DIRECTIONS {
-        let mut crow: i8 = y as i8;
-        let mut ccol: i8 = x as i8;
-        crow += direction.0;
-        ccol += direction.1;
-        if inlimits(layout, crow, ccol) {
-            match layout[crow as usize][ccol as usize] {
-                LayoutPos::Occupied => {
-                    count += 1;
-                }
-                _ => {}
-            }
-        }
-    }
-    count
-}
-
-fn visiblecount(layout: &Vec<Vec<LayoutPos>>, y: usize, x: usize) -> u32 {
-    let mut count = 0;
-
-    for direction in &DIRECTIONS {
-        let mut crow: i8 = y as i8;
-        let mut ccol: i8 = x as i8;
-        loop {
-            crow += direction.0;
-            ccol += direction.1;
-            if inlimits(layout, crow, ccol) {
-                match layout[crow as usize][ccol as usize] {
-                    LayoutPos::Occupied => {
-                        count += 1;
-                        break;
-                    }
-                    LayoutPos::Empty => {
-                        break;
-                    }
-                    LayoutPos::Floor => {}
-                }
-            } else {
-                break;
-            }
-        }
-    }
-    count
-}
-
-impl std::fmt::Debug for LayoutPos {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(
-            fmt,
-            "{}",
-            match self {
-                LayoutPos::Floor => '.',
-                LayoutPos::Empty => 'L',
-                LayoutPos::Occupied => '#',
-            }
+impl std::ops::AddAssign for Status {
+    fn add_assign(&mut self, other: Self) {
+        *self = Self(
+            self.0 + other.0,
+            self.1 + other.1,
+            (self.2 + other.2) % 360.0,
         )
     }
 }
 
-fn debuglayout(layout: &Vec<Vec<LayoutPos>>) {
-    for ridx in 0..layout.len() {
-        for cidx in 0..layout[ridx].len() {
-            print!("{:?}", layout[ridx][cidx]);
+fn main() {
+    let data = String::from_utf8_lossy(include_bytes!("data.txt"));
+    let data: Vec<_> = data
+        .split("\n")
+        .filter(|x| x.len() > 0)
+        .map(|x| x.split_at(1))
+        .map(|x| (x.0.chars().nth(0).unwrap(), x.1.parse::<f64>().unwrap()))
+        .collect();
+    //println!("{:#?}", data);
+
+    method1(&data);
+    method2(&data);
+}
+
+fn method1(data: &Vec<(char, f64)>) {
+    let mut status = Status(0.0, 0.0, 0.0);
+    for (order, value) in data {
+        match order {
+            'N' => status += Status(0.0, *value, 0.0),
+            'S' => status += Status(0.0, *value * -1.0, 0.0),
+            'E' => status += Status(*value, 0.0, 0.0),
+            'W' => status += Status(*value * -1.0, 0.0, 0.0),
+            'R' => status += Status(0.0, 0.0, value.to_radians() * -1.0),
+            'L' => status += Status(0.0, 0.0, value.to_radians() * 1.0),
+            'F' => {
+                status.0 += *value * status.2.cos();
+                status.1 += *value * status.2.sin();
+            }
+            _ => unreachable!(),
         }
-        println!();
     }
-    println!();
+    println!("{:?}", status);
+}
+
+fn method2(data: &Vec<(char, f64)>) {
+    fn rotate_waypoint(ship: &Status, waypoint: &Status, angle: f64) -> Status {
+        let (o0, o1) = (waypoint.0 - ship.0, waypoint.1 - ship.1);
+        let (r, mut ang) = ((o0.powi(2) + o1.powi(2)).sqrt(), o1.atan2(o0));
+        ang += angle;
+        Status(ship.0 + (r * ang.cos()), ship.1 + (r * ang.sin()), 0.0)
+    }
+    let mut ship = Status(0.0, 0.0, 0.0);
+    let mut waypoint = Status(10.0, 1.0, 0.0);
+    for (order, value) in data {
+        match order {
+            'N' => waypoint += Status(0.0, *value, 0.0),
+            'S' => waypoint += Status(0.0, *value * -1.0, 0.0),
+            'E' => waypoint += Status(*value, 0.0, 0.0),
+            'W' => waypoint += Status(*value * -1.0, 0.0, 0.0),
+            'R' => waypoint = rotate_waypoint(&ship, &waypoint, -1.0 * value.to_radians()),
+            'L' => waypoint = rotate_waypoint(&ship, &waypoint, 1.0 * value.to_radians()),
+            'F' => {
+                let dpos = Status(
+                    value * (waypoint.0 - ship.0),
+                    value * (waypoint.1 - ship.1),
+                    0.0,
+                );
+                ship += dpos.clone(); // Im lazy and i dont want to impl the add trait only for this
+                waypoint += dpos;
+            }
+            _ => unreachable!(),
+        }
+    }
+    println!("{:?}", ship);
 }
