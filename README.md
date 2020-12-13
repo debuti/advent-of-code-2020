@@ -1,71 +1,118 @@
 # Advent of rust 2020
 https://adventofcode.com/
 
-## --- Day 12: Rain Risk ---
+## --- Day 13: Shuttle Search ---
 
-Your ferry made decent progress toward the island, but the storm came in faster than anyone expected. The ferry needs to take evasive actions!
+Your ferry can make it safely to a nearby port, but it won't get much further. When you call to book another ship, you discover that no ships embark from that port to your vacation island. You'll need to get from the port to the nearest airport.
 
-Unfortunately, the ship's navigation computer seems to be malfunctioning; rather than giving a route directly to safety, it produced extremely circuitous instructions. When the captain uses the PA system to ask if anyone can help, you quickly volunteer.
+Fortunately, a shuttle bus service is available to bring you from the sea port to the airport! Each bus has an ID number that also indicates how often the bus leaves for the airport.
 
-The navigation instructions (your puzzle input) consists of a sequence of single-character actions paired with integer input values. After staring at them for a few minutes, you work out what they probably mean:
+Bus schedules are defined based on a timestamp that measures the number of minutes since some fixed reference point in the past. At timestamp 0, every bus simultaneously departed from the sea port. After that, each bus travels to the airport, then various other locations, and finally returns to the sea port to repeat its journey forever.
 
-    Action N means to move north by the given value.
-    Action S means to move south by the given value.
-    Action E means to move east by the given value.
-    Action W means to move west by the given value.
-    Action L means to turn left the given number of degrees.
-    Action R means to turn right the given number of degrees.
-    Action F means to move forward by the given value in the direction the ship is currently facing.
+The time this loop takes a particular bus is also its ID number: the bus with ID 5 departs from the sea port at timestamps 0, 5, 10, 15, and so on. The bus with ID 11 departs at 0, 11, 22, 33, and so on. If you are there when the bus departs, you can ride that bus to the airport!
 
-The ship starts by facing east. Only the L and R actions change the direction the ship is facing. (That is, if the ship is facing east and the next instruction is N10, the ship would move north 10 units, but would still move east if the following action were F.)
+Your notes (your puzzle input) consist of two lines. The first line is your estimate of the earliest timestamp you could depart on a bus. The second line lists the bus IDs that are in service according to the shuttle company; entries that show x must be out of service, so you decide to ignore them.
 
-For example:
+To save time once you arrive, your goal is to figure out the earliest bus you can take to the airport. (There will be exactly one such bus.)
 
-F10
-N3
-F7
-R90
-F11
+For example, suppose you have the following notes:
 
-These instructions would be handled as follows:
+939
+7,13,x,x,59,x,31,19
 
-    F10 would move the ship 10 units east (because the ship starts by facing east) to east 10, north 0.
-    N3 would move the ship 3 units north to east 10, north 3.
-    F7 would move the ship another 7 units east (because the ship is still facing east) to east 17, north 3.
-    R90 would cause the ship to turn right by 90 degrees and face south; it remains at east 17, north 3.
-    F11 would move the ship 11 units south to east 17, south 8.
+Here, the earliest timestamp you could depart is 939, and the bus IDs in service are 7, 13, 59, 31, and 19. Near timestamp 939, these bus IDs depart at the times marked D:
 
-At the end of these instructions, the ship's Manhattan distance (sum of the absolute values of its east/west position and its north/south position) from its starting position is 17 + 8 = 25.
+time   bus 7   bus 13  bus 59  bus 31  bus 19
+929      .       .       .       .       .
+930      .       .       .       D       .
+931      D       .       .       .       D
+932      .       .       .       .       .
+933      .       .       .       .       .
+934      .       .       .       .       .
+935      .       .       .       .       .
+936      .       D       .       .       .
+937      .       .       .       .       .
+938      D       .       .       .       .
+939      .       .       .       .       .
+940      .       .       .       .       .
+941      .       .       .       .       .
+942      .       .       .       .       .
+943      .       .       .       .       .
+944      .       .       D       .       .
+945      D       .       .       .       .
+946      .       .       .       .       .
+947      .       .       .       .       .
+948      .       .       .       .       .
+949      .       D       .       .       .
 
-Figure out where the navigation instructions lead. What is the Manhattan distance between that location and the ship's starting position?
+The earliest bus you could take is bus ID 59. It doesn't depart until timestamp 944, so you would need to wait 944 - 939 = 5 minutes before it departs. Multiplying the bus ID by the number of minutes you'd need to wait gives 295.
 
-Your puzzle answer was 938.
+What is the ID of the earliest bus you can take to the airport multiplied by the number of minutes you'll need to wait for that bus?
+
+Your puzzle answer was 205.
 --- Part Two ---
 
-Before you can give the destination to the captain, you realize that the actual action meanings were printed on the back of the instructions the whole time.
+The shuttle company is running a contest: one gold coin for anyone that can find the earliest timestamp such that the first bus ID departs at that time and each subsequent listed bus ID departs at that subsequent minute. (The first line in your input is no longer relevant.)
 
-Almost all of the actions indicate how to move a waypoint which is relative to the ship's position:
+For example, suppose you have the same list of bus IDs as above:
 
-    Action N means to move the waypoint north by the given value.
-    Action S means to move the waypoint south by the given value.
-    Action E means to move the waypoint east by the given value.
-    Action W means to move the waypoint west by the given value.
-    Action L means to rotate the waypoint around the ship left (counter-clockwise) the given number of degrees.
-    Action R means to rotate the waypoint around the ship right (clockwise) the given number of degrees.
-    Action F means to move forward to the waypoint a number of times equal to the given value.
+7,13,x,x,59,x,31,19
 
-The waypoint starts 10 units east and 1 unit north relative to the ship. The waypoint is relative to the ship; that is, if the ship moves, the waypoint moves with it.
+An x in the schedule means there are no constraints on what bus IDs must depart at that time.
 
-For example, using the same instructions as above:
+This means you are looking for the earliest timestamp (called t) such that:
 
-    F10 moves the ship to the waypoint 10 times (a total of 100 units east and 10 units north), leaving the ship at east 100, north 10. The waypoint stays 10 units east and 1 unit north of the ship.
-    N3 moves the waypoint 3 units north to 10 units east and 4 units north of the ship. The ship remains at east 100, north 10.
-    F7 moves the ship to the waypoint 7 times (a total of 70 units east and 28 units north), leaving the ship at east 170, north 38. The waypoint stays 10 units east and 4 units north of the ship.
-    R90 rotates the waypoint around the ship clockwise 90 degrees, moving it to 4 units east and 10 units south of the ship. The ship remains at east 170, north 38.
-    F11 moves the ship to the waypoint 11 times (a total of 44 units east and 110 units south), leaving the ship at east 214, south 72. The waypoint stays 4 units east and 10 units south of the ship.
+    Bus ID 7 departs at timestamp t.
+    Bus ID 13 departs one minute after timestamp t.
+    There are no requirements or restrictions on departures at two or three minutes after timestamp t.
+    Bus ID 59 departs four minutes after timestamp t.
+    There are no requirements or restrictions on departures at five minutes after timestamp t.
+    Bus ID 31 departs six minutes after timestamp t.
+    Bus ID 19 departs seven minutes after timestamp t.
 
-After these operations, the ship's Manhattan distance from its starting position is 214 + 72 = 286.
+The only bus departures that matter are the listed bus IDs at their specific offsets from t. Those bus IDs can depart at other times, and other bus IDs can depart at those times. For example, in the list above, because bus ID 19 must depart seven minutes after the timestamp at which bus ID 7 departs, bus ID 7 will always also be departing with bus ID 19 at seven minutes after timestamp t.
 
-Figure out where the navigation instructions actually lead. What is the Manhattan distance between that location and the ship's starting position?
+In this example, the earliest timestamp at which this occurs is 1068781:
 
-Your puzzle answer was 54404.
+time     bus 7   bus 13  bus 59  bus 31  bus 19
+1068773    .       .       .       .       .
+1068774    D       .       .       .       .
+1068775    .       .       .       .       .
+1068776    .       .       .       .       .
+1068777    .       .       .       .       .
+1068778    .       .       .       .       .
+1068779    .       .       .       .       .
+1068780    .       .       .       .       .
+1068781    D       .       .       .       .
+1068782    .       D       .       .       .
+1068783    .       .       .       .       .
+1068784    .       .       .       .       .
+1068785    .       .       D       .       .
+1068786    .       .       .       .       .
+1068787    .       .       .       D       .
+1068788    D       .       .       .       D
+1068789    .       .       .       .       .
+1068790    .       .       .       .       .
+1068791    .       .       .       .       .
+1068792    .       .       .       .       .
+1068793    .       .       .       .       .
+1068794    .       .       .       .       .
+1068795    D       D       .       .       .
+1068796    .       .       .       .       .
+1068797    .       .       .       .       .
+
+In the above example, bus ID 7 departs at timestamp 1068788 (seven minutes after t). This is fine; the only requirement on that minute is that bus ID 19 departs then, and it does.
+
+Here are some other examples:
+
+    The earliest timestamp that matches the list 17,x,13,19 is 3417.
+    67,7,59,61 first occurs at timestamp 754018.
+    67,x,7,59,61 first occurs at timestamp 779210.
+    67,7,x,59,61 first occurs at timestamp 1261476.
+    1789,37,47,1889 first occurs at timestamp 1202161486.
+
+However, with so many bus IDs in your list, surely the actual earliest timestamp will be larger than 100000000000000!
+
+What is the earliest timestamp such that all of the listed bus IDs depart at offsets matching their positions in the list?
+
+Your puzzle answer was 803025030761664.
