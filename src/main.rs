@@ -1,3 +1,7 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::thread;
+
 fn main() {
     let data = String::from_utf8_lossy(include_bytes!("data.txt"));
     let data: Vec<&str> = data.split("\n").filter(|x| x.len() > 0).collect();
@@ -25,18 +29,38 @@ fn main() {
         .map(|x| if x != "x" { x.parse().unwrap() } else { 1 })
         .collect();
     // It has to happen between zero and sched.product(). Take advantage of the hint in the question
-    // It is pretty slow so it will need to be ran in threads
-    let mut idx: u64 = 100_000_000_000_000 - 100_000_000_000_000 % sched[0];
-    'outer: loop {
-        idx += sched[0];
-        for ptr in 1..sched.len() {
-            if sched[ptr] > 1 // Little optimization to save some time on the anytime buses
-             && (idx + ptr as u64) % sched[ptr] != 0
-            {
-                continue 'outer;
+    let range = (100_000_000_000_000u64, sched.iter().product::<u64>());
+    let found = Arc::new(AtomicBool::new(false));
+    let width: u64 = (range.1 - range.0) / num_cpus::get() as u64;
+    let mut threads = Vec::new();
+    for tid in 1..num_cpus::get() + 1 {
+        let sched = sched.clone();
+        let found = found.clone();
+        threads.push(thread::spawn(move || {
+            let from = range.0 + width * (tid as u64 - 1);
+            let to = range.0 + width * tid as u64;
+            //println!("tid: {} start: {} end: {}", tid, from, to);
+            let mut idx: u64 = from - from % sched[0];
+            'outer: loop {
+                idx += sched[0];
+                if (idx / sched[0]) % 1000000 == 0 && found.load(Ordering::Relaxed) {
+                    return;
+                }
+                for ptr in 1..sched.len() {
+                    if sched[ptr] > 1 // Little optimization to save some time on the anytime buses
+                     && (idx + ptr as u64) % sched[ptr] != 0
+                    {
+                        continue 'outer;
+                    }
+                }
+                println!("It happened at {:?}", idx);
+                found.swap(true, Ordering::Relaxed);
+                return;
             }
-        }
-        println!("It happened at {:?}", idx);
-        break 'outer;
+        }));
+    }
+
+    for thread in threads {
+        thread.join().unwrap();
     }
 }
