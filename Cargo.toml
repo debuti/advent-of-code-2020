@@ -1,5 +1,5 @@
 [package]
-name = "advent-of-code-2020"
+name = "advent-of-rust-2020"
 version = "0.1.0"
 authors = ["Borja Garcia Gonzalez <debuti@gmail.com>"]
 edition = "2018"
