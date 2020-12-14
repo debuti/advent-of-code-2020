@@ -1,66 +1,131 @@
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::thread;
+use regex::Regex;
+use std::collections::HashMap;
+
+struct Mask(u64);
+impl std::fmt::Debug for Mask {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(f, "{:#036b}", self.0)
+    }
+}
+
+#[derive(Debug)]
+enum Instr {
+    Masks(
+        Mask, //andmask
+        Mask, //ormask
+    ),
+    Mem(
+        u64, //addr
+        u64, //value
+    ),
+}
 
 fn main() {
     let data = String::from_utf8_lossy(include_bytes!("data.txt"));
-    let data: Vec<&str> = data.split("\n").filter(|x| x.len() > 0).collect();
+    let data: Vec<&str> = data.split('\n').filter(|x| x.len() > 0).collect();
 
-    // First part
-    let deptime: u64 = data[0].parse().unwrap();
-    let sched: Vec<u64> = data[1]
-        .split(',')
-        .filter(|&x| x != "x")
-        .map(|x| x.parse().unwrap())
-        .collect();
-    let rem: Vec<u64> = sched.iter().map(|x| x - deptime % x).collect();
-    let idx = rem
+    step1(&data);
+    step2(&data);
+}
+
+fn step1(data: &Vec<&str>) {
+    let data: Vec<Instr> = data
         .iter()
-        .position(|s| s == rem.iter().min().unwrap())
-        .unwrap();
-    println!(
-        "The answer to the first question is {}",
-        sched[idx] * rem[idx]
-    );
-
-    // Second part
-    let sched: Vec<u64> = data[1]
-        .split(',')
-        .map(|x| if x != "x" { x.parse().unwrap() } else { 1 })
-        .collect();
-    // It has to happen between zero and sched.product(). Take advantage of the hint in the question
-    let range = (100_000_000_000_000u64, sched.iter().product::<u64>());
-    let found = Arc::new(AtomicBool::new(false));
-    let width: u64 = (range.1 - range.0) / num_cpus::get() as u64;
-    let mut threads = Vec::new();
-    for tid in 1..num_cpus::get() + 1 {
-        let sched = sched.clone();
-        let found = found.clone();
-        threads.push(thread::spawn(move || {
-            let from = range.0 + width * (tid as u64 - 1);
-            let to = range.0 + width * tid as u64;
-            //println!("tid: {} start: {} end: {}", tid, from, to);
-            let mut idx: u64 = from - from % sched[0];
-            'outer: loop {
-                idx += sched[0];
-                if (idx / sched[0]) % 1000000 == 0 && found.load(Ordering::Relaxed) {
-                    return;
-                }
-                for ptr in 1..sched.len() {
-                    if sched[ptr] > 1 // Little optimization to save some time on the anytime buses
-                     && (idx + ptr as u64) % sched[ptr] != 0
-                    {
-                        continue 'outer;
+        .map(|x| {
+            if x.starts_with("mask") {
+                match Regex::new(r"mask = (.*)").unwrap().captures(x) {
+                    Some(x) => {
+                        let v = x.get(1).unwrap().as_str();
+                        Instr::Masks(
+                            v.chars()
+                                .map(|x| if x == '0' { 0u64 } else { 1u64 })
+                                .fold(Mask(0), |acc, elem| Mask(acc.0 * 2 + elem)),
+                            v.chars()
+                                .map(|x| if x == '1' { 1u64 } else { 0u64 })
+                                .fold(Mask(0), |acc, elem| Mask(acc.0 * 2 + elem)),
+                        )
                     }
+                    None => unreachable!(),
                 }
-                println!("It happened at {:?}", idx);
-                found.swap(true, Ordering::Relaxed);
-                return;
+            } else if x.starts_with("mem") {
+                match Regex::new(r"mem\[(\d*)\] = (\d*)").unwrap().captures(x) {
+                    Some(x) => {
+                        let a = x.get(1).unwrap().as_str().parse::<u64>().unwrap();
+                        let v = x.get(2).unwrap().as_str().parse::<u64>().unwrap();
+                        Instr::Mem(a, v)
+                    }
+                    None => unreachable!(),
+                }
+            } else {
+                unreachable!()
             }
-        }));
-    }
+        })
+        .collect();
 
-    for thread in threads {
-        thread.join().unwrap();
+    let mut candmask = Mask(0b111111111111111111111111111111111111);
+    let mut cormask = Mask(0b000000000000000000000000000000000000);
+    let mut memory: HashMap<u64, u64> = HashMap::new();
+    for instr in data {
+        match instr {
+            Instr::Masks(and, or) => {
+                candmask = and;
+                cormask = or;
+            }
+            Instr::Mem(addr, value) => {
+                *memory.entry(addr).or_insert(0u64) = value & candmask.0 | cormask.0
+            }
+        }
     }
+    println!("{:?}", memory.values().sum::<u64>());
+}
+
+fn step2(data: &Vec<&str>) {
+    let data: Vec<Instr> = data
+        .iter()
+        .map(|x| {
+            if x.starts_with("mask") {
+                match Regex::new(r"mask = (.*)").unwrap().captures(x) {
+                    Some(x) => {
+                        let v = x.get(1).unwrap().as_str();
+                        Instr::Masks(
+                            v.chars()
+                                .map(|x| if x == '0' { 0u64 } else { 1u64 })
+                                .fold(Mask(0), |acc, elem| Mask(acc.0 * 2 + elem)),
+                            v.chars()
+                                .map(|x| if x == '1' { 1u64 } else { 0u64 })
+                                .fold(Mask(0), |acc, elem| Mask(acc.0 * 2 + elem)),
+                        )
+                    }
+                    None => unreachable!(),
+                }
+            } else if x.starts_with("mem") {
+                match Regex::new(r"mem\[(\d*)\] = (\d*)").unwrap().captures(x) {
+                    Some(x) => {
+                        let a = x.get(1).unwrap().as_str().parse::<u64>().unwrap();
+                        let v = x.get(2).unwrap().as_str().parse::<u64>().unwrap();
+                        Instr::Mem(a, v)
+                    }
+                    None => unreachable!(),
+                }
+            } else {
+                unreachable!()
+            }
+        })
+        .collect();
+
+    let mut candmask = Mask(0b111111111111111111111111111111111111);
+    let mut cormask = Mask(0b000000000000000000000000000000000000);
+    let mut memory: HashMap<u64, u64> = HashMap::new();
+    for instr in data {
+        match instr {
+            Instr::Masks(and, or) => {
+                candmask = and;
+                cormask = or;
+            }
+            Instr::Mem(addr, value) => {
+                *memory.entry(addr).or_insert(0u64) = value & candmask.0 | cormask.0
+            }
+        }
+    }
+    println!("{:?}", memory.values().sum::<u64>());
 }
