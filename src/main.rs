@@ -112,7 +112,7 @@ fn main() {
     let mut result: HashMap<String, usize> = HashMap::new();
     while rules.len() > 0 {
         for (fieldidx, field) in fields.iter().enumerate() {
-            let mut df = rules
+            let df = rules
                 .iter()
                 .map(|rule| {
                     if field
@@ -131,8 +131,9 @@ fn main() {
             // If only one rule matches the field
             if df.len() == 1 {
                 let selectedrule = df[0].unwrap();
+                let name = selectedrule.name.clone();
                 result.insert(selectedrule.name.clone(), fieldidx);
-                rules.remove(rules.iter().position(|x| x == selectedrule).unwrap());
+                rules.remove(rules.iter().position(|x| x.name == name).unwrap());
             }
         }
     }
