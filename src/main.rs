@@ -1,72 +1,158 @@
+use regex::Regex;
 use std::collections::HashMap;
-use std::time::{Duration, Instant};
 
-fn main() {
-    let data = String::from_utf8_lossy(include_bytes!("data.txt"));
-    let data: Vec<_> = data
-        .split("\n")
-        .filter(|x| x.len() > 0)
-        .next()
-        .unwrap()
-        .split(",")
-        .map(|x| x.parse::<u32>().unwrap())
-        .collect();
+#[derive(Debug, PartialEq)]
+enum Op {
+    Or,
+    And,
+}
 
-    let fnts: Vec<fn(Vec<u32>, usize) -> (u32, Duration)> = vec![turnsv2, turnsv1, turnsv0];
-    for until in &[2020, 30_000_000] {
-        for fnt in &fnts {
-            println!("{:?}", fnt(data.clone(), *until as usize));
+#[derive(Debug, PartialEq)]
+struct CompoundRule {
+    name: String,
+    first: SimpleRule,
+    op: Op,
+    second: SimpleRule,
+}
+impl CompoundRule {
+    fn check(&self, v: u32) -> bool {
+        match self.op {
+            Op::Or => self.first.check(v) || self.second.check(v),
+            Op::And => self.first.check(v) && self.second.check(v),
         }
     }
 }
 
-fn turnsv0(mut data: Vec<u32>, until: usize) -> (u32, Duration) {
-    let start = Instant::now();
-    while data.len() < until {
-        let lastidx = data.len() - 1;
-        let last = data[lastidx];
-        data.push(if data.iter().filter(|&x| *x == last).count() == 1 {
-            0
-        } else {
-            (lastidx - data[..lastidx].iter().rposition(|&x| x == last).unwrap()) as u32
-        });
+#[derive(Debug, PartialEq)]
+struct SimpleRule {
+    lower: u32,
+    higher: u32,
+}
+impl SimpleRule {
+    fn check(&self, v: u32) -> bool {
+        self.lower <= v && v <= self.higher
     }
-    (*data.last().unwrap(), start.elapsed())
 }
 
-fn turnsv1(mut data: Vec<u32>, until: usize) -> (u32, Duration) {
-    let start = Instant::now();
-    let mut counts: HashMap<u32, u32> = data.iter().map(|&x| (x, 1)).collect();
-    while data.len() < until {
-        let lastidx = data.len() - 1;
-        let last = data[lastidx];
-        data.push(if *counts.get(&last).unwrap() == 1 {
-            0
-        } else {
-            (lastidx - data[..lastidx].iter().rposition(|&x| x == last).unwrap()) as u32
-        });
-        *counts.entry(*data.last().unwrap()).or_insert(0) += 1;
+fn main() {
+    let data = String::from_utf8_lossy(include_bytes!("data.txt"));
+    let data: Vec<_> = data.split("\n\n").filter(|x| x.len() > 0).collect();
+    let mut rules: Vec<CompoundRule> = data[0]
+        .split("\n")
+        .filter(|x| x.len() > 0)
+        .map(|x| {
+            match Regex::new(r"(.*): (\d+)-(\d+) (.*+) (\d+)-(\d+)")
+                .unwrap()
+                .captures(&x)
+            {
+                Some(x) => CompoundRule {
+                    name: x.get(1).unwrap().as_str().to_string(),
+                    first: SimpleRule {
+                        lower: x.get(2).unwrap().as_str().parse::<u32>().unwrap(),
+                        higher: x.get(3).unwrap().as_str().parse::<u32>().unwrap(),
+                    },
+                    op: match x.get(4).unwrap().as_str() {
+                        "or" => Op::Or,
+                        "and" => Op::And,
+                        _ => unreachable!(),
+                    },
+                    second: SimpleRule {
+                        lower: x.get(5).unwrap().as_str().parse::<u32>().unwrap(),
+                        higher: x.get(6).unwrap().as_str().parse::<u32>().unwrap(),
+                    },
+                },
+                None => unreachable!(),
+            }
+        })
+        .collect();
+    let my: Vec<u32> = data[1]
+        .split("\n")
+        .skip(1)
+        .filter(|x| x.len() > 0)
+        .map(|x| x.split(",").map(|x| x.parse::<u32>().unwrap()).collect())
+        .collect::<Vec<Vec<u32>>>()
+        .pop()
+        .unwrap();
+    let nearby: Vec<Vec<u32>> = data[2]
+        .split("\n")
+        .skip(1)
+        .filter(|x| x.len() > 0)
+        .map(|x| x.split(",").map(|x| x.parse::<u32>().unwrap()).collect())
+        .collect();
+
+    // Step 1
+    let mut values_not_valid: Vec<u32> = Vec::new();
+    let mut valid_nearby: Vec<Vec<u32>> = Vec::new();
+    for ticket in &nearby {
+        let mut valid = true;
+        for num in ticket {
+            let mut count = 0;
+            for rule in &rules {
+                if !rule.check(*num) {
+                    count += 1;
+                }
+            }
+            if count == rules.len() {
+                values_not_valid.push(*num);
+                valid = false;
+            }
+        }
+        if valid {
+            valid_nearby.push(ticket.to_vec());
+        }
     }
-    (*data.last().unwrap(), start.elapsed())
+
+    println!(
+        "Answer to first question {:#?}",
+        values_not_valid.into_iter().sum::<u32>()
+    );
+
+    // Step 2
+    let fields = transpose(valid_nearby);
+    let mut result: HashMap<String, usize> = HashMap::new();
+    while rules.len() > 0 {
+        for (fieldidx, field) in fields.iter().enumerate() {
+            let mut df = rules
+                .iter()
+                .map(|rule| {
+                    if field
+                        .iter()
+                        .map(|&x| rule.check(x))
+                        .filter(|&x| x == true)
+                        .count()
+                        == field.len()
+                    {
+                        return Some(rule);
+                    }
+                    None
+                })
+                .filter(|&x| if let Some(_) = x { true } else { false })
+                .collect::<Vec<Option<&CompoundRule>>>();
+            // If only one rule matches the field
+            if df.len() == 1 {
+                let selectedrule = df[0].unwrap();
+                result.insert(selectedrule.name.clone(), fieldidx);
+                rules.remove(rules.iter().position(|x| x == selectedrule).unwrap());
+            }
+        }
+    }
+    println!(
+        "Answer to second question {:?}",
+        result
+            .iter()
+            .filter(|&(k, _)| k.starts_with("departure"))
+            .map(|(_, v)| my[*v] as u64)
+            .product::<u64>()
+    );
 }
 
-fn turnsv2(data: Vec<u32>, until: usize) -> (u32, Duration) {
-    let start = Instant::now();
-    let mut counts: HashMap<u32, u32> = data.iter().map(|&x| (x, 1)).collect();
-    let mut lasts: HashMap<u32, usize> =
-        data.iter().enumerate().map(|(idx, &x)| (x, idx)).collect();
-    let mut counter = data.len();
-    let mut last = *data.last().unwrap();
-    while counter < until {
-        let it = if *counts.get(&last).unwrap() == 1 {
-            0
-        } else {
-            (counter - 1 - lasts.get(&(last as u32)).unwrap()) as u32
-        };
-        *lasts.entry(last).or_insert(0) = counter - 1;
-        *counts.entry(it).or_insert(0) += 1;
-        last = it;
-        counter += 1;
-    }
-    (last, start.elapsed())
+/// Took from https://stackoverflow.com/a/64499219/219355
+fn transpose<T>(v: Vec<Vec<T>>) -> Vec<Vec<T>>
+where
+    T: Clone,
+{
+    assert!(!v.is_empty());
+    (0..v[0].len())
+        .map(|i| v.iter().map(|inner| inner[i].clone()).collect::<Vec<T>>())
+        .collect()
 }
