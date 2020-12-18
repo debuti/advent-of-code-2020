@@ -21,11 +21,11 @@ The ship starts by facing east. Only the L and R actions change the direction th
 
 For example:
 
-F10
-N3
-F7
-R90
-F11
+    F10
+    N3
+    F7
+    R90
+    F11
 
 These instructions would be handled as follows:
 
@@ -40,6 +40,7 @@ At the end of these instructions, the ship's Manhattan distance (sum of the abso
 Figure out where the navigation instructions lead. What is the Manhattan distance between that location and the ship's starting position?
 
 Your puzzle answer was 938.
+
 --- Part Two ---
 
 Before you can give the destination to the captain, you realize that the actual action meanings were printed on the back of the instructions the whole time.
