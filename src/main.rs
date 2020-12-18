@@ -1,159 +1,201 @@
-use regex::Regex;
-use std::collections::HashMap;
-
-#[derive(Debug, PartialEq)]
-enum Op {
-    Or,
-    And,
-}
-
-#[derive(Debug, PartialEq)]
-struct CompoundRule {
-    name: String,
-    first: SimpleRule,
-    op: Op,
-    second: SimpleRule,
-}
-impl CompoundRule {
-    fn check(&self, v: u32) -> bool {
-        match self.op {
-            Op::Or => self.first.check(v) || self.second.check(v),
-            Op::And => self.first.check(v) && self.second.check(v),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq)]
-struct SimpleRule {
-    lower: u32,
-    higher: u32,
-}
-impl SimpleRule {
-    fn check(&self, v: u32) -> bool {
-        self.lower <= v && v <= self.higher
-    }
-}
+use std::collections::HashSet;
 
 fn main() {
+    step1();
+    step2();
+}
+
+fn step1() {
     let data = String::from_utf8_lossy(include_bytes!("data.txt"));
-    let data: Vec<_> = data.split("\n\n").filter(|x| x.len() > 0).collect();
-    let mut rules: Vec<CompoundRule> = data[0]
+    let data: Vec<Vec<(i32, i32, i32)>> = data
         .split("\n")
         .filter(|x| x.len() > 0)
-        .map(|x| {
-            match Regex::new(r"(.*): (\d+)-(\d+) (.*+) (\d+)-(\d+)")
-                .unwrap()
-                .captures(&x)
-            {
-                Some(x) => CompoundRule {
-                    name: x.get(1).unwrap().as_str().to_string(),
-                    first: SimpleRule {
-                        lower: x.get(2).unwrap().as_str().parse::<u32>().unwrap(),
-                        higher: x.get(3).unwrap().as_str().parse::<u32>().unwrap(),
-                    },
-                    op: match x.get(4).unwrap().as_str() {
-                        "or" => Op::Or,
-                        "and" => Op::And,
-                        _ => unreachable!(),
-                    },
-                    second: SimpleRule {
-                        lower: x.get(5).unwrap().as_str().parse::<u32>().unwrap(),
-                        higher: x.get(6).unwrap().as_str().parse::<u32>().unwrap(),
-                    },
-                },
-                None => unreachable!(),
-            }
+        .enumerate()
+        .map(|(idx, x)| {
+            x.chars()
+                .enumerate()
+                .filter(|&(_, y)| y == '#')
+                .map(|(idy, _)| (idy as i32, idx as i32, 0i32))
+                .collect()
         })
         .collect();
-    let my: Vec<u32> = data[1]
-        .split("\n")
-        .skip(1)
-        .filter(|x| x.len() > 0)
-        .map(|x| x.split(",").map(|x| x.parse::<u32>().unwrap()).collect())
-        .collect::<Vec<Vec<u32>>>()
-        .pop()
-        .unwrap();
-    let nearby: Vec<Vec<u32>> = data[2]
-        .split("\n")
-        .skip(1)
-        .filter(|x| x.len() > 0)
-        .map(|x| x.split(",").map(|x| x.parse::<u32>().unwrap()).collect())
-        .collect();
+    let mut data: HashSet<_> = data.iter().flatten().cloned().collect::<HashSet<_>>();
 
-    // Step 1
-    let mut values_not_valid: Vec<u32> = Vec::new();
-    let mut valid_nearby: Vec<Vec<u32>> = Vec::new();
-    for ticket in &nearby {
-        let mut valid = true;
-        for num in ticket {
-            let mut count = 0;
-            for rule in &rules {
-                if !rule.check(*num) {
+    for _ in 0..6 {
+        let mut cloneddata = data.clone();
+        let mut dimensions = (
+            (std::i32::MAX, std::i32::MIN),
+            (std::i32::MAX, std::i32::MIN),
+            (std::i32::MAX, std::i32::MIN),
+        );
+        //If a cube is active and exactly 2 or 3 of its neighbors are also active, the cube remains active. Otherwise, the cube becomes inactive.
+        for active in &data {
+            // Retrieve min dimensions
+            {
+                if active.0 < dimensions.0 .0 {
+                    dimensions.0 .0 = active.0;
+                }
+                if active.0 > dimensions.0 .1 {
+                    dimensions.0 .1 = active.0;
+                }
+                if active.1 < dimensions.1 .0 {
+                    dimensions.1 .0 = active.1;
+                }
+                if active.1 > dimensions.1 .1 {
+                    dimensions.1 .1 = active.1;
+                }
+                if active.2 < dimensions.2 .0 {
+                    dimensions.2 .0 = active.2;
+                }
+                if active.2 > dimensions.2 .1 {
+                    dimensions.2 .1 = active.2;
+                }
+            }
+            let activeneighbours = neighbours3d(&data, *active);
+            if activeneighbours < 2 || 3 < activeneighbours {
+                cloneddata.remove(active);
+            }
+        }
+
+// for z in (dimensions.2 .0)..(dimensions.2 .1 + 1) {
+//     for y in (dimensions.1 .0)..(dimensions.1 .1 + 1) {
+//         for x in (dimensions.0 .0)..(dimensions.0 .1 + 1) {
+//             if data.contains(&(x, y, z)) {
+//                 print!("#");
+//             } else {
+//                 print!(".");
+//             }
+//         }
+//         println!("");
+//     }
+//     println!("");
+// }
+
+
+        //If a cube is inactive but exactly 3 of its neighbors are active, the cube becomes active. Otherwise, the cube remains inactive.
+        for x in (dimensions.0 .0 - 1)..(dimensions.0 .1 + 2) {
+            for y in (dimensions.1 .0 - 1)..(dimensions.1 .1 + 2) {
+                for z in (dimensions.2 .0 - 1)..(dimensions.2 .1 + 2) {
+                    if !data.contains(&(x, y, z)) {
+                        if neighbours3d(&data, (x, y, z)) == 3 {
+                            cloneddata.insert((x, y, z));
+                        }
+                    }
+                }
+            }
+        }
+        data = cloneddata;
+    }
+    println!("Step 1 answer: {:?}", data.len());
+}
+
+fn neighbours3d(data: &HashSet<(i32, i32, i32)>, coord: (i32, i32, i32)) -> u32 {
+    let mut count = 0;
+    for x in (coord.0 - 1)..(coord.0 + 2) {
+        for y in (coord.1 - 1)..(coord.1 + 2) {
+            for z in (coord.2 - 1)..(coord.2 + 2) {
+                //println!("{:?}", (x, y, z));
+                if (x, y, z) != coord && data.contains(&(x, y, z)) {
+                    //println!("Found {:?} as neighbours of {:?}", (x, y, z), coord);
                     count += 1;
                 }
             }
-            if count == rules.len() {
-                values_not_valid.push(*num);
-                valid = false;
-            }
-        }
-        if valid {
-            valid_nearby.push(ticket.to_vec());
         }
     }
-
-    println!(
-        "Answer to first question {:#?}",
-        values_not_valid.into_iter().sum::<u32>()
-    );
-
-    // Step 2
-    let fields = transpose(valid_nearby);
-    let mut result: HashMap<String, usize> = HashMap::new();
-    while rules.len() > 0 {
-        for (fieldidx, field) in fields.iter().enumerate() {
-            let df = rules
-                .iter()
-                .map(|rule| {
-                    if field
-                        .iter()
-                        .map(|&x| rule.check(x))
-                        .filter(|&x| x == true)
-                        .count()
-                        == field.len()
-                    {
-                        return Some(rule);
-                    }
-                    None
-                })
-                .filter(|&x| if let Some(_) = x { true } else { false })
-                .collect::<Vec<Option<&CompoundRule>>>();
-            // If only one rule matches the field
-            if df.len() == 1 {
-                let selectedrule = df[0].unwrap();
-                let name = selectedrule.name.clone();
-                result.insert(selectedrule.name.clone(), fieldidx);
-                rules.remove(rules.iter().position(|x| x.name == name).unwrap());
-            }
-        }
-    }
-    println!(
-        "Answer to second question {:?}",
-        result
-            .iter()
-            .filter(|&(k, _)| k.starts_with("departure"))
-            .map(|(_, v)| my[*v] as u64)
-            .product::<u64>()
-    );
+    count
 }
 
-/// Took from https://stackoverflow.com/a/64499219/219355
-fn transpose<T>(v: Vec<Vec<T>>) -> Vec<Vec<T>>
-where
-    T: Clone,
-{
-    assert!(!v.is_empty());
-    (0..v[0].len())
-        .map(|i| v.iter().map(|inner| inner[i].clone()).collect::<Vec<T>>())
-        .collect()
+fn step2() {
+    let data = String::from_utf8_lossy(include_bytes!("data.txt"));
+    let data: Vec<Vec<(i32, i32, i32, i32)>> = data
+        .split("\n")
+        .filter(|x| x.len() > 0)
+        .enumerate()
+        .map(|(idx, x)| {
+            x.chars()
+                .enumerate()
+                .filter(|&(_, y)| y == '#')
+                .map(|(idy, _)| (idy as i32, idx as i32, 0i32, 0i32))
+                .collect()
+        })
+        .collect();
+    let mut data: HashSet<_> = data.iter().flatten().cloned().collect::<HashSet<_>>();
+
+    for _ in 0..6 {
+        let mut cloneddata = data.clone();
+        let mut dimensions = (
+            (std::i32::MAX, std::i32::MIN),
+            (std::i32::MAX, std::i32::MIN),
+            (std::i32::MAX, std::i32::MIN),
+            (std::i32::MAX, std::i32::MIN),
+        );
+        //If a cube is active and exactly 2 or 3 of its neighbors are also active, the cube remains active. Otherwise, the cube becomes inactive.
+        for active in &data {
+            // Retrieve min dimensions
+            {
+                if active.0 < dimensions.0 .0 {
+                    dimensions.0 .0 = active.0;
+                }
+                if active.0 > dimensions.0 .1 {
+                    dimensions.0 .1 = active.0;
+                }
+                if active.1 < dimensions.1 .0 {
+                    dimensions.1 .0 = active.1;
+                }
+                if active.1 > dimensions.1 .1 {
+                    dimensions.1 .1 = active.1;
+                }
+                if active.2 < dimensions.2 .0 {
+                    dimensions.2 .0 = active.2;
+                }
+                if active.2 > dimensions.2 .1 {
+                    dimensions.2 .1 = active.2;
+                }
+                if active.3 < dimensions.3 .0 {
+                    dimensions.3 .0 = active.3;
+                }
+                if active.3 > dimensions.3 .1 {
+                    dimensions.3 .1 = active.3;
+                }
+            }
+            let activeneighbours = neighbours4d(&data, *active);
+            if activeneighbours < 2 || 3 < activeneighbours {
+                cloneddata.remove(active);
+            }
+        }
+
+        //If a cube is inactive but exactly 3 of its neighbors are active, the cube becomes active. Otherwise, the cube remains inactive.
+        for x in (dimensions.0 .0 - 1)..(dimensions.0 .1 + 2) {
+            for y in (dimensions.1 .0 - 1)..(dimensions.1 .1 + 2) {
+                for z in (dimensions.2 .0 - 1)..(dimensions.2 .1 + 2) {
+                    for w in (dimensions.3 .0 - 1)..(dimensions.3 .1 + 2) {
+                        if !data.contains(&(x, y, z, w)) {
+                            if neighbours4d(&data, (x, y, z, w)) == 3 {
+                                cloneddata.insert((x, y, z, w));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        data = cloneddata;
+    }
+    println!("Step 2 answer: {:?}", data.len());
+}
+
+fn neighbours4d(data: &HashSet<(i32, i32, i32, i32)>, coord: (i32, i32, i32, i32)) -> u32 {
+    let mut count = 0;
+    for x in (coord.0 - 1)..(coord.0 + 2) {
+        for y in (coord.1 - 1)..(coord.1 + 2) {
+            for z in (coord.2 - 1)..(coord.2 + 2) {
+                for w in (coord.3 - 1)..(coord.3 + 2) {
+                    if (x, y, z, w) != coord && data.contains(&(x, y, z, w)) {
+                        //println!("Found {:?} as neighbours of {:?}", (x, y, z), coord);
+                        count += 1;
+                    }
+                }
+            }
+        }
+    }
+    count
 }
