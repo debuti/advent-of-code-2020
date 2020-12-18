@@ -13,21 +13,21 @@ However, the rules of operator precedence have changed. Rather than evaluating m
 
 For example, the steps to evaluate the expression 1 + 2 * 3 + 4 * 5 + 6 are as follows:
 
-1 + 2 * 3 + 4 * 5 + 6
-  3   * 3 + 4 * 5 + 6
-      9   + 4 * 5 + 6
-         13   * 5 + 6
-             65   + 6
-                 71
+    1 + 2 * 3 + 4 * 5 + 6
+      3   * 3 + 4 * 5 + 6
+          9   + 4 * 5 + 6
+             13   * 5 + 6
+                 65   + 6
+                     71
 
 Parentheses can override this order; for example, here is what happens if parentheses are added to form 1 + (2 * 3) + (4 * (5 + 6)):
 
-1 + (2 * 3) + (4 * (5 + 6))
-1 +    6    + (4 * (5 + 6))
-     7      + (4 * (5 + 6))
-     7      + (4 *   11   )
-     7      +     44
-            51
+    1 + (2 * 3) + (4 * (5 + 6))
+    1 +    6    + (4 * (5 + 6))
+         7      + (4 * (5 + 6))
+         7      + (4 *   11   )
+         7      +     44
+                51
 
 Here are a few more examples:
 
@@ -47,12 +47,12 @@ Now, addition and multiplication have different precedence levels, but they're n
 
 For example, the steps to evaluate the expression 1 + 2 * 3 + 4 * 5 + 6 are now as follows:
 
-1 + 2 * 3 + 4 * 5 + 6
-  3   * 3 + 4 * 5 + 6
-  3   *   7   * 5 + 6
-  3   *   7   *  11
-     21       *  11
-         231
+    1 + 2 * 3 + 4 * 5 + 6
+      3   * 3 + 4 * 5 + 6
+      3   *   7   * 5 + 6
+      3   *   7   *  11
+         21       *  11
+             231
 
 Here are the other examples from above:
 
