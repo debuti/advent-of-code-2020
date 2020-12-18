@@ -17,46 +17,47 @@ To save time once you arrive, your goal is to figure out the earliest bus you ca
 
 For example, suppose you have the following notes:
 
-939
-7,13,x,x,59,x,31,19
+    939
+    7,13,x,x,59,x,31,19
 
 Here, the earliest timestamp you could depart is 939, and the bus IDs in service are 7, 13, 59, 31, and 19. Near timestamp 939, these bus IDs depart at the times marked D:
-
-time   bus 7   bus 13  bus 59  bus 31  bus 19
-929      .       .       .       .       .
-930      .       .       .       D       .
-931      D       .       .       .       D
-932      .       .       .       .       .
-933      .       .       .       .       .
-934      .       .       .       .       .
-935      .       .       .       .       .
-936      .       D       .       .       .
-937      .       .       .       .       .
-938      D       .       .       .       .
-939      .       .       .       .       .
-940      .       .       .       .       .
-941      .       .       .       .       .
-942      .       .       .       .       .
-943      .       .       .       .       .
-944      .       .       D       .       .
-945      D       .       .       .       .
-946      .       .       .       .       .
-947      .       .       .       .       .
-948      .       .       .       .       .
-949      .       D       .       .       .
+    
+    time   bus 7   bus 13  bus 59  bus 31  bus 19
+    929      .       .       .       .       .
+    930      .       .       .       D       .
+    931      D       .       .       .       D
+    932      .       .       .       .       .
+    933      .       .       .       .       .
+    934      .       .       .       .       .
+    935      .       .       .       .       .
+    936      .       D       .       .       .
+    937      .       .       .       .       .
+    938      D       .       .       .       .
+    939      .       .       .       .       .
+    940      .       .       .       .       .
+    941      .       .       .       .       .
+    942      .       .       .       .       .
+    943      .       .       .       .       .
+    944      .       .       D       .       .
+    945      D       .       .       .       .
+    946      .       .       .       .       .
+    947      .       .       .       .       .
+    948      .       .       .       .       .
+    949      .       D       .       .       .
 
 The earliest bus you could take is bus ID 59. It doesn't depart until timestamp 944, so you would need to wait 944 - 939 = 5 minutes before it departs. Multiplying the bus ID by the number of minutes you'd need to wait gives 295.
 
 What is the ID of the earliest bus you can take to the airport multiplied by the number of minutes you'll need to wait for that bus?
 
 Your puzzle answer was 205.
+
 --- Part Two ---
 
 The shuttle company is running a contest: one gold coin for anyone that can find the earliest timestamp such that the first bus ID departs at that time and each subsequent listed bus ID departs at that subsequent minute. (The first line in your input is no longer relevant.)
 
 For example, suppose you have the same list of bus IDs as above:
 
-7,13,x,x,59,x,31,19
+    7,13,x,x,59,x,31,19
 
 An x in the schedule means there are no constraints on what bus IDs must depart at that time.
 
@@ -73,34 +74,34 @@ This means you are looking for the earliest timestamp (called t) such that:
 The only bus departures that matter are the listed bus IDs at their specific offsets from t. Those bus IDs can depart at other times, and other bus IDs can depart at those times. For example, in the list above, because bus ID 19 must depart seven minutes after the timestamp at which bus ID 7 departs, bus ID 7 will always also be departing with bus ID 19 at seven minutes after timestamp t.
 
 In this example, the earliest timestamp at which this occurs is 1068781:
-
-time     bus 7   bus 13  bus 59  bus 31  bus 19
-1068773    .       .       .       .       .
-1068774    D       .       .       .       .
-1068775    .       .       .       .       .
-1068776    .       .       .       .       .
-1068777    .       .       .       .       .
-1068778    .       .       .       .       .
-1068779    .       .       .       .       .
-1068780    .       .       .       .       .
-1068781    D       .       .       .       .
-1068782    .       D       .       .       .
-1068783    .       .       .       .       .
-1068784    .       .       .       .       .
-1068785    .       .       D       .       .
-1068786    .       .       .       .       .
-1068787    .       .       .       D       .
-1068788    D       .       .       .       D
-1068789    .       .       .       .       .
-1068790    .       .       .       .       .
-1068791    .       .       .       .       .
-1068792    .       .       .       .       .
-1068793    .       .       .       .       .
-1068794    .       .       .       .       .
-1068795    D       D       .       .       .
-1068796    .       .       .       .       .
-1068797    .       .       .       .       .
-
+    
+    time     bus 7   bus 13  bus 59  bus 31  bus 19
+    1068773    .       .       .       .       .
+    1068774    D       .       .       .       .
+    1068775    .       .       .       .       .
+    1068776    .       .       .       .       .
+    1068777    .       .       .       .       .
+    1068778    .       .       .       .       .
+    1068779    .       .       .       .       .
+    1068780    .       .       .       .       .
+    1068781    D       .       .       .       .
+    1068782    .       D       .       .       .
+    1068783    .       .       .       .       .
+    1068784    .       .       .       .       .
+    1068785    .       .       D       .       .
+    1068786    .       .       .       .       .
+    1068787    .       .       .       D       .
+    1068788    D       .       .       .       D
+    1068789    .       .       .       .       .
+    1068790    .       .       .       .       .
+    1068791    .       .       .       .       .
+    1068792    .       .       .       .       .
+    1068793    .       .       .       .       .
+    1068794    .       .       .       .       .
+    1068795    D       D       .       .       .
+    1068796    .       .       .       .       .
+    1068797    .       .       .       .       .
+    
 In the above example, bus ID 7 departs at timestamp 1068788 (seven minutes after t). This is fine; the only requirement on that minute is that bus ID 19 departs then, and it does.
 
 Here are some other examples:
