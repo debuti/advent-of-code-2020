@@ -44,6 +44,7 @@ Here are some other boarding passes:
 As a sanity check, look through your list of boarding passes. What is the highest seat ID on a boarding pass?
 
 Your puzzle answer was 944.
+
 --- Part Two ---
 
 Ding! The "fasten seat belt" signs have turned on. Time to find your seat.
