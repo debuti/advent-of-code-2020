@@ -2,7 +2,8 @@ use regex::Regex;
 use std::collections::HashMap;
 
 fn main() {
-    let data = String::from_utf8_lossy(include_bytes!("data.txt")).replace("\"", "");
+    // Switch between data.txt and datab.txt to get the results of the first and second steps
+    let data = String::from_utf8_lossy(include_bytes!("datab.txt")).replace("\"", "");
     let data: Vec<Vec<&str>> = data
         .split("\n\n")
         .map(|x| x.split("\n").filter(|x| x.len() > 0).collect())
@@ -19,36 +20,44 @@ fn main() {
         .collect();
     let data = &data[1];
 
-    println!("{:?}", rules);
-    println!("{:?}", data);
-
-    let regexes: HashMap<usize, String> =
-        rules.iter().map(|(k, v)| (*k, solve(&rules, v))).collect();
-    println!("{:?}", regexes);
+    let regexes: HashMap<usize, String> = rules
+        .iter()
+        .map(|(k, v)| (*k, solve(&rules, v).replace("(a)", "a").replace("(b)", "b")))
+        .collect();
+    let regex0 = Regex::new(&format!("^{}$", regexes.get(&0).unwrap())).unwrap();
     println!(
         "Data lines matching rule 0: {}",
-        data.iter()
-            .filter(|x| {
-                match Regex::new(&format!("^{}$", regexes.get(&0).unwrap()))
-                    .unwrap()
-                    .captures(x)
-                {
-                    Some(_) => true,
-                    None => false,
-                }
-            },)
-            .count()
+        data.iter().filter(|x| regex0.captures(x).is_some()).count()
     );
 }
+
+static mut COUNT8: i32 = 0;
+static mut COUNT11: i32 = 0;
 
 fn solve(rules: &HashMap<usize, &str>, rule: &str) -> String {
     rule.split(" ")
         .map(|x| {
             if x.parse::<usize>().is_ok() {
-                format!(
-                    "({})",
-                    solve(rules, rules.get(&x.parse::<usize>().unwrap()).unwrap())
-                )
+                let idx = x.parse::<usize>().unwrap();
+                unsafe {
+                    if idx == 8 {
+                        if COUNT8 == 5 {
+                            COUNT8 = 0;
+                            return "".to_string();
+                        } else {
+                            COUNT8 += 1;
+                        }
+                    }
+                    if idx == 11 {
+                        if COUNT11 == 5 {
+                            COUNT11 = 0;
+                            return "".to_string();
+                        } else {
+                            COUNT11 += 1;
+                        }
+                    }
+                }
+                format!("({})", solve(rules, rules.get(&idx).unwrap()))
             } else {
                 x.to_string()
             }
