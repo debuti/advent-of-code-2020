@@ -27,7 +27,7 @@ fn main() {
     let regex0 = Regex::new(&format!("^{}$", regexes.get(&0).unwrap())).unwrap();
     println!(
         "Data lines matching rule 0: {}",
-        data.iter().filter(|x| regex0.captures(x).is_some()).count()
+        data.iter().filter(|x| regex0.is_match(x)).count()
     );
 }
 
