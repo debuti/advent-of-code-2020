@@ -1,5 +1,4 @@
-use regex::Regex;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashSet, VecDeque};
 
 const DEBUG: bool = false;
 macro_rules! debugln {
@@ -8,77 +7,175 @@ macro_rules! debugln {
 
 fn main() {
     let data = String::from_utf8_lossy(include_bytes!("data.txt"));
-    let data: Vec<(HashSet<&str>, HashSet<&str>)> = data
-        .split("\n")
-        .filter(|x| x.len() > 0)
-        .map(
-            |x| match Regex::new(r"(.*) \(contains (.*)\)").unwrap().captures(x) {
-                Some(x) => {
-                    let ingredients = x.get(1).unwrap().as_str();
-
-                    let allergens = x.get(2).unwrap().as_str();
-                    (
-                        ingredients.split(" ").collect(),
-                        allergens.split(", ").collect(),
-                    )
-                }
-                None => unreachable!(),
-            },
-        )
+    let data: Vec<VecDeque<u32>> = data
+        .split("\n\n")
+        .map(|x| {
+            x.split("\n")
+                .enumerate()
+                .filter(|&(i, x)| i > 0 && x.len() > 0)
+                .map(|(_, x)| x.parse::<u32>().unwrap())
+                .collect()
+        })
         .collect();
-    let mut allergens: HashSet<&str> = HashSet::new();
-    for (_, i) in &data {
-        allergens.extend(i);
-    }
-    debugln!("Data: {:#?}", data);
-    debugln!("Allergens: {:#?}", allergens);
 
-    // Discover which ingredients contains allergens by isolating allergens to a single ingredient.
-    // As this ingredient can only have one allergen it will fall off the rest of the allergen lists,
-    // leaving some of those list with only one ingredient and so on
-    let mut ingredients_by_allergen: HashMap<&str, &str> = HashMap::new();
-    while allergens.len() > 0 {
-        allergens.retain(|allergen| {
-            let mut result: Option<HashSet<&str>> = None;
-            for (a, b) in &data {
-                if b.contains(allergen) {
-                    if result.is_none() {
-                        result = Some(a.clone());
-                    } else {
-                        result = Some(result.unwrap().intersection(&a).copied().collect());
+    step1(data.clone());
+    step2(data.clone());
+}
+
+fn step1(mut data: Vec<VecDeque<u32>>) {
+    let mut round = 1;
+    loop {
+        debugln!("-- Round {} --", round);
+        let mut flip: Vec<u32> = Vec::new();
+        let mut id = 0;
+        for player in &mut data {
+            id += 1;
+            debugln!("Player {}'s deck: {:?}", id, player);
+            flip.push(player.pop_front().unwrap());
+        }
+        let winner = flip
+            .iter()
+            .position(|x| x == flip.iter().max().unwrap())
+            .unwrap();
+        debugln!("Player {} wins the round!\n", winner + 1);
+        flip.sort_by(|a, b| b.cmp(a));
+        for card in flip {
+            data[winner].push_back(card);
+        }
+        // Check if somebody won
+        if data.iter().filter(|x| x.len() > 0).count() == 1 {
+            break;
+        }
+        round += 1;
+    }
+    debugln!("== Post-game results ==");
+    for (idx, player) in data.iter().enumerate() {
+        debugln!("Player {}'s deck: {:?}", idx + 1, player);
+    }
+    println!(
+        "Step 1 answer: {}\n",
+        data.iter()
+            .filter(|x| x.len() > 0)
+            .next()
+            .unwrap()
+            .iter()
+            .rev()
+            .enumerate()
+            .map(|(i, x)| x * (1 + i as u32))
+            .sum::<u32>()
+    );
+}
+
+fn step2(mut data: Vec<VecDeque<u32>>) {
+    fn game(data: &mut Vec<VecDeque<u32>>, depth: &mut u32) -> usize {
+        debugln!("=== Game {} ===\n", depth);
+        let mut history: HashSet<Vec<VecDeque<u32>>> = HashSet::new();
+        let mut round = 1;
+        let gameid = depth.clone();
+        loop {
+            debugln!("-- Round {} (Game {}) --", round, gameid);
+
+            // History rule
+            {
+                if history.contains(data) {
+                    debugln!("Player 1 won this round by the history rule");
+                    break;
+                }
+                // Insert the current configuration into history
+                history.insert(data.clone());
+            }
+
+            let mut flip: Vec<u32> = Vec::new();
+            // Draw some cards
+            {
+                let mut id = 0;
+                for player in &mut *data {
+                    id += 1;
+                    debugln!("Player {}'s deck: {:?}", id, player);
+                    flip.push(player.pop_front().unwrap());
+                }
+            }
+
+            let mut flag = true;
+            // Recursive rule
+            {
+                for (i, f) in flip.iter().enumerate() {
+                    if (data[i].len() as u32) < *f {
+                        flag = false;
+                        break;
                     }
                 }
             }
-            let mut result = result.unwrap();
-            for (_, v) in &ingredients_by_allergen {
-                result.remove(v);
+
+            // Retrieve the winner
+            let winner = if flag {
+                debugln!("Playing a sub-game to determine the winner...\n");
+                *depth += 1;
+                let winner = game(
+                    &mut data
+                        .clone()
+                        .iter()
+                        .enumerate()
+                        .map(|(i, x)| {
+                            x.iter()
+                                .enumerate()
+                                .filter(|&(j, _)| (j as u32) < flip[i])
+                                .map(|(_, &c)| c)
+                                .collect()
+                        })
+                        .collect(),
+                    depth,
+                );
+                debugln!("...anyway, back to game {}.\n", gameid);
+                winner
+            } else {
+                flip.iter()
+                    .position(|x| x == flip.iter().max().unwrap())
+                    .unwrap()
+            };
+            debugln!(
+                "Player {} wins the round {} of game {}!\n",
+                winner + 1,
+                round,
+                gameid
+            );
+
+            // Pay the winner (Sadly with this modification this game can only be played by two people)
+            data[winner].push_back(flip.remove(winner));
+            data[winner].push_back(flip.pop().unwrap());
+
+            // Check if somebody won
+            if data.iter().filter(|x| x.len() > 0).count() == 1 {
+                break;
             }
-            if result.len() == 1 {
-                let selected = result.iter().next().unwrap();
-                ingredients_by_allergen.insert(allergen, selected);
-                return false;
-            }
-            true
-        });
+
+            round += 1;
+        }
+
+        let winner = data
+            .iter()
+            .enumerate()
+            .filter(|(_, x)| x.len() > 0)
+            .map(|(i, _)| i)
+            .next()
+            .unwrap();
+        debugln!("The winner of game {} is player {}!\n", gameid, winner + 1);
+        winner
     }
 
-    // Get ingredients_wo_allergen by substracting the ingredients_by_allergen from the list of ingredients
-    let mut ingredients_wo_allergen: Vec<&str> = data.iter().fold(Vec::new(), |mut acc, x| {
-        acc.extend(x.0.iter());
-        acc
-    });
-    ingredients_wo_allergen.retain(|v| !ingredients_by_allergen.values().any(|w| w == v));
-    println!("Answer to part 1: {:#?}", ingredients_wo_allergen.len());
-
-    // Fold the sorted vector that comes from ingredients_by_allergen map
-    let mut v: Vec<_> = ingredients_by_allergen.into_iter().collect();
-    v.sort_by(|x, y| x.0.cmp(&y.0));
+    let mut depth = 1;
+    let winner = game(&mut data, &mut depth);
+    debugln!("== Post-game results ==");
+    for (idx, player) in data.iter().enumerate() {
+        debugln!("Player {}'s deck: {:?}", idx + 1, player);
+    }
     println!(
-        "Answer to part 2: {:#?}",
-        v.iter().fold(String::new(), |mut acc, x| {
-            acc.push_str(x.1);
-            acc.push_str(",");
-            acc
-        })
+        "Step 2 answer: {}",
+        data[winner]
+            .iter()
+            .rev()
+            .enumerate()
+            .map(|(i, x)| x * (1 + i as u32))
+            .sum::<u32>()
     );
 }
