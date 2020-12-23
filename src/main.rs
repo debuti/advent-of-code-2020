@@ -1,181 +1,127 @@
-use std::collections::{HashSet, VecDeque};
+use std::convert::TryFrom;
 
-const DEBUG: bool = false;
+const DEBUG: bool = true;
 macro_rules! debugln {
     ($($args:expr),*) => ( if DEBUG {println!($( $args ),* )});
 }
 
+#[derive(Debug)]
+struct CircVec<T> {
+    head: T,
+    data: Vec<T>,
+    capacity: usize,
+    highestv: T,
+}
+
+// We need a trait which tells us the "one" value for a type
+trait Increment {
+    fn one() -> Self;
+    fn zero() -> Self;
+}
+
+impl Increment for i32 {
+    fn one() -> Self {
+        1
+    }
+    fn zero() -> Self {
+        0
+    }
+}
+
+impl<
+        T: Copy
+            + PartialEq
+            + std::ops::Add<Output = T>
+            + std::ops::Sub<Output = T>
+            + std::ops::Rem<Output = T>
+            + Increment
+            + std::fmt::Debug,
+    > CircVec<T>
+{
+    fn headpos(&self) -> usize {
+        self.data.iter().position(|&x| x == self.head).unwrap()
+    }
+
+    fn pick3(&mut self) -> [T; 3] {
+        let head = self.headpos() + 1;
+        [
+            if head < self.data.len() {
+                self.data.remove(head)
+            } else {
+                self.data.remove(0)
+            },
+            if head < self.data.len() {
+                self.data.remove(head)
+            } else {
+                self.data.remove(0)
+            },
+            if head < self.data.len() {
+                self.data.remove(head)
+            } else {
+                self.data.remove(0)
+            },
+        ]
+    }
+
+fn destcup(&mut self) -> usize {
+    let mut needle = self.head;
+    loop {
+        needle = ((needle - T::one()) + self.highestv) % (self.highestv);
+        if needle == T::zero() {
+            needle = self.highestv;
+        }
+        println!("blah: {:?}", needle);
+        if self.data.contains(&needle) {
+            println!("destination: {:?}", needle);
+            return self.data.iter().position(|&x| x == needle).unwrap();
+        }
+    }
+}
+
+    fn reinsert3_and_move_head(&mut self, new: [T; 3]) {
+        let pos = self.destcup();
+        for item in new.iter().rev() {
+            self.data.insert(pos + 1, *item);
+        }
+        self.head = self.data[(self.headpos() + 1) % self.data.len()];
+    }
+}
+
+impl std::iter::FromIterator<i32> for CircVec<i32> {
+    fn from_iter<I: IntoIterator<Item = i32>>(iter: I) -> Self {
+        let mut c = CircVec {
+            data: Vec::new(),
+            capacity: 0,
+            head: 0,
+            highestv: 0,
+        };
+
+        for i in iter {
+            c.data.push(i);
+        }
+        c.capacity = c.data.len();
+        c.highestv = *c.data.iter().max().unwrap();
+        c.head = c.data[0];
+        c
+    }
+}
+
 fn main() {
-    let data = String::from_utf8_lossy(include_bytes!("data.txt"));
-    let data: Vec<VecDeque<u32>> = data
-        .split("\n\n")
-        .map(|x| {
-            x.split("\n")
-                .enumerate()
-                .filter(|&(i, x)| i > 0 && x.len() > 0)
-                .map(|(_, x)| x.parse::<u32>().unwrap())
-                .collect()
-        })
+    let _test = "389125467";
+    let _data = "653427918";
+    let mut data: CircVec<i32> = _data
+        .chars()
+        .map(|x| i32::try_from(x.to_digit(10).unwrap()).unwrap())
         .collect();
 
-    step1(data.clone());
-    step2(data.clone());
-}
-
-fn step1(mut data: Vec<VecDeque<u32>>) {
-    let mut round = 1;
-    loop {
-        debugln!("-- Round {} --", round);
-        let mut flip: Vec<u32> = Vec::new();
-        let mut id = 0;
-        for player in &mut data {
-            id += 1;
-            debugln!("Player {}'s deck: {:?}", id, player);
-            flip.push(player.pop_front().unwrap());
-        }
-        let winner = flip
-            .iter()
-            .position(|x| x == flip.iter().max().unwrap())
-            .unwrap();
-        debugln!("Player {} wins the round!\n", winner + 1);
-        flip.sort_by(|a, b| b.cmp(a));
-        for card in flip {
-            data[winner].push_back(card);
-        }
-        // Check if somebody won
-        if data.iter().filter(|x| x.len() > 0).count() == 1 {
-            break;
-        }
-        round += 1;
+    for moveid in 1..101 {
+        debugln!("-- move {} --", moveid);
+        debugln!("cups: {:?}", data);
+        let removed = data.pick3();
+        debugln!("pick up: {:?}", removed);
+        data.reinsert3_and_move_head(removed);
+        debugln!("\n");
     }
-    debugln!("== Post-game results ==");
-    for (idx, player) in data.iter().enumerate() {
-        debugln!("Player {}'s deck: {:?}", idx + 1, player);
-    }
-    println!(
-        "Step 1 answer: {}\n",
-        data.iter()
-            .filter(|x| x.len() > 0)
-            .next()
-            .unwrap()
-            .iter()
-            .rev()
-            .enumerate()
-            .map(|(i, x)| x * (1 + i as u32))
-            .sum::<u32>()
-    );
-}
-
-fn step2(mut data: Vec<VecDeque<u32>>) {
-    fn game(data: &mut Vec<VecDeque<u32>>, depth: &mut u32) -> usize {
-        debugln!("=== Game {} ===\n", depth);
-        let mut history: HashSet<Vec<VecDeque<u32>>> = HashSet::new();
-        let mut round = 1;
-        let gameid = depth.clone();
-        loop {
-            debugln!("-- Round {} (Game {}) --", round, gameid);
-
-            // History rule
-            {
-                if history.contains(data) {
-                    debugln!("Player 1 won this round by the history rule");
-                    break;
-                }
-                // Insert the current configuration into history
-                history.insert(data.clone());
-            }
-
-            let mut flip: Vec<u32> = Vec::new();
-            // Draw some cards
-            {
-                let mut id = 0;
-                for player in &mut *data {
-                    id += 1;
-                    debugln!("Player {}'s deck: {:?}", id, player);
-                    flip.push(player.pop_front().unwrap());
-                }
-            }
-
-            let mut flag = true;
-            // Recursive rule
-            {
-                for (i, f) in flip.iter().enumerate() {
-                    if (data[i].len() as u32) < *f {
-                        flag = false;
-                        break;
-                    }
-                }
-            }
-
-            // Retrieve the winner
-            let winner = if flag {
-                debugln!("Playing a sub-game to determine the winner...\n");
-                *depth += 1;
-                let winner = game(
-                    &mut data
-                        .clone()
-                        .iter()
-                        .enumerate()
-                        .map(|(i, x)| {
-                            x.iter()
-                                .enumerate()
-                                .filter(|&(j, _)| (j as u32) < flip[i])
-                                .map(|(_, &c)| c)
-                                .collect()
-                        })
-                        .collect(),
-                    depth,
-                );
-                debugln!("...anyway, back to game {}.\n", gameid);
-                winner
-            } else {
-                flip.iter()
-                    .position(|x| x == flip.iter().max().unwrap())
-                    .unwrap()
-            };
-            debugln!(
-                "Player {} wins the round {} of game {}!\n",
-                winner + 1,
-                round,
-                gameid
-            );
-
-            // Pay the winner (Sadly with this modification this game can only be played by two people)
-            data[winner].push_back(flip.remove(winner));
-            data[winner].push_back(flip.pop().unwrap());
-
-            // Check if somebody won
-            if data.iter().filter(|x| x.len() > 0).count() == 1 {
-                break;
-            }
-
-            round += 1;
-        }
-
-        let winner = data
-            .iter()
-            .enumerate()
-            .filter(|(_, x)| x.len() > 0)
-            .map(|(i, _)| i)
-            .next()
-            .unwrap();
-        debugln!("The winner of game {} is player {}!\n", gameid, winner + 1);
-        winner
-    }
-
-    let mut depth = 1;
-    let winner = game(&mut data, &mut depth);
-    debugln!("== Post-game results ==");
-    for (idx, player) in data.iter().enumerate() {
-        debugln!("Player {}'s deck: {:?}", idx + 1, player);
-    }
-    println!(
-        "Step 2 answer: {}",
-        data[winner]
-            .iter()
-            .rev()
-            .enumerate()
-            .map(|(i, x)| x * (1 + i as u32))
-            .sum::<u32>()
-    );
+    debugln!("-- final --");
+    debugln!("cups: {:?}", data);
 }
