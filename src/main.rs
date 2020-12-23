@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 macro_rules! debugln {
     ($($args:expr),*) => ( if DEBUG {println!($( $args ),* )});
 }
@@ -13,7 +13,7 @@ struct CircVec<T> {
     highestv: T,
 }
 
-// We need a trait which tells us the "one" value for a type
+// We need a trait which tells us the "one" value for any type
 trait Increment {
     fn one() -> Self;
     fn zero() -> Self;
@@ -63,20 +63,19 @@ impl<
         ]
     }
 
-fn destcup(&mut self) -> usize {
-    let mut needle = self.head;
-    loop {
-        needle = ((needle - T::one()) + self.highestv) % (self.highestv);
-        if needle == T::zero() {
-            needle = self.highestv;
-        }
-        println!("blah: {:?}", needle);
-        if self.data.contains(&needle) {
-            println!("destination: {:?}", needle);
-            return self.data.iter().position(|&x| x == needle).unwrap();
+    fn destcup(&mut self) -> usize {
+        let mut needle = self.head;
+        loop {
+            needle = ((needle - T::one()) + self.highestv) % (self.highestv);
+            if needle == T::zero() {
+                needle = self.highestv;
+            }
+            if self.data.contains(&needle) {
+                debugln!("destination: {:?}", needle);
+                return self.data.iter().position(|&x| x == needle).unwrap();
+            }
         }
     }
-}
 
     fn reinsert3_and_move_head(&mut self, new: [T; 3]) {
         let pos = self.destcup();
@@ -99,9 +98,15 @@ impl std::iter::FromIterator<i32> for CircVec<i32> {
         for i in iter {
             c.data.push(i);
         }
-        c.capacity = c.data.len();
         c.highestv = *c.data.iter().max().unwrap();
         c.head = c.data[0];
+        let mut it = c.highestv;
+        while c.data.len() < 1000000 {
+            it += 1;
+            c.data.push(it);
+        }
+        c.highestv = 1000000;
+        c.capacity = c.data.len();
         c
     }
 }
@@ -114,8 +119,8 @@ fn main() {
         .map(|x| i32::try_from(x.to_digit(10).unwrap()).unwrap())
         .collect();
 
-    for moveid in 1..101 {
-        debugln!("-- move {} --", moveid);
+    for moveid in 0..10000000 {
+        println!("-- move {} --", moveid);
         debugln!("cups: {:?}", data);
         let removed = data.pick3();
         debugln!("pick up: {:?}", removed);
@@ -123,5 +128,5 @@ fn main() {
         debugln!("\n");
     }
     debugln!("-- final --");
-    debugln!("cups: {:?}", data);
+    println!("cups: {:?}", data);
 }
