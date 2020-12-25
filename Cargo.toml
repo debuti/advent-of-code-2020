@@ -7,3 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+#piston_window = "0.116.0"
+
+[profile.dev]
+opt-level = 3 # Optimize to down the 5 seconds to 0.3 seconds
